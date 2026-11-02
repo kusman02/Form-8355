@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Data Form 8355 SMPN 18 Jakarta",
+  "description": "Sistem Informasi Manajemen Data Peserta Didik Form 8355, Rekapitulasi Rombel, Kategori Usia, Daftar Absensi, dan Mutasi SMP Negeri 18 Jakarta",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
