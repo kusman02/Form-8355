@@ -1,5 +1,6 @@
 import React from 'react';
 import { SchoolProfile, LogoConfig } from '../types';
+import { SchoolEmblemSvg } from './BrandLogos';
 
 interface KopSuratProps {
   school: SchoolProfile;
@@ -66,7 +67,7 @@ export const KopSurat: React.FC<KopSuratProps> = ({
           )}
         </div>
 
-        {/* Right Logo: Sekolah (Badge 18 / Custom) */}
+        {/* Right Logo: Sekolah (Official Emblem / Custom) */}
         <div className={compact ? "w-14 flex justify-center" : "w-18 flex justify-center"}>
           {logos.sekolahLogoUrl ? (
             <img 
@@ -75,8 +76,8 @@ export const KopSurat: React.FC<KopSuratProps> = ({
               className={compact ? "max-h-12 max-w-full object-contain" : "max-h-16 max-w-full object-contain"} 
             />
           ) : (
-            <div className={`rounded-full bg-blue-800 border-2 border-amber-400 flex items-center justify-center text-amber-300 font-extrabold shadow ${compact ? 'w-12 h-12 text-sm' : 'w-14 h-14 text-lg'}`}>
-              18
+            <div className={compact ? "w-12 h-12 flex items-center justify-center" : "w-14 h-14 flex items-center justify-center"}>
+              <SchoolEmblemSvg className="w-full h-full" />
             </div>
           )}
         </div>

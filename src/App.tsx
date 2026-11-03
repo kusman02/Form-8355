@@ -65,7 +65,9 @@ import {
   Sun,
   Calendar,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Menu,
+  X
 } from 'lucide-react';
 
 export default function App() {
@@ -137,6 +139,12 @@ export default function App() {
   const [accDashboard, setAccDashboard] = useState<boolean>(true);
   const [accPengaturan, setAccPengaturan] = useState<boolean>(true);
   const [acc8355, setAcc8355] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+
+  const navigateTo = (view: ActiveView) => {
+    setActiveView(view);
+    setSidebarOpen(false);
+  };
 
   // Modals
   const [studentModal, setStudentModal] = useState<{ isOpen: boolean; student: Student | null }>({
@@ -542,27 +550,47 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans">
       
+      {/* Mobile Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR NAVIGASI */}
-      <aside className="w-72 bg-[#090d16] text-slate-300 flex flex-col flex-shrink-0 transition-all duration-300 z-30 select-none border-r border-slate-800/60 no-print">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#090d16] text-slate-300 flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out select-none border-r border-slate-800/60 no-print lg:static lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+      }`}>
         {/* Sidebar Header */}
-        <div className="p-4 flex items-center space-x-3 border-b border-slate-800/80">
-          <div className="w-10 h-10 rounded-xl bg-blue-900/30 border border-blue-500/40 text-white font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden p-1 flex-shrink-0">
-            <SchoolLogo
-              url={logos.sidebarLogoUrl || logos.sekolahLogoUrl}
-              alt={logos.sidebarTextName || school.name}
-              className="w-full h-full object-contain"
-              fallbackClassName="w-full h-full"
-            />
+        <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
+          <div className="flex items-center space-x-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-blue-900/30 border border-blue-500/40 text-white font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden p-1 flex-shrink-0">
+              <SchoolLogo
+                url={logos.sidebarLogoUrl || logos.sekolahLogoUrl}
+                alt={logos.sidebarTextName || school.name}
+                className="w-full h-full object-contain"
+                fallbackClassName="w-full h-full"
+              />
+            </div>
+            <div className="overflow-hidden">
+              <h1 className="font-bold text-white text-base leading-tight truncate">
+                {logos.sidebarTextName || school.name || 'SMPN 18 JAKARTA'}
+              </h1>
+              <p className="text-xs text-blue-400 font-medium flex items-center gap-1 mt-0.5">
+                <Sparkles className="w-3 h-3" />
+                <span>Sistem Data Form 8355</span>
+              </p>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <h1 className="font-bold text-white text-base leading-tight truncate">
-              {logos.sidebarTextName || school.name || 'SMPN 18 JAKARTA'}
-            </h1>
-            <p className="text-xs text-blue-400 font-medium flex items-center gap-1 mt-0.5">
-              <Sparkles className="w-3 h-3" />
-              <span>Sistem Data Form 8355</span>
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Links */}
@@ -592,7 +620,7 @@ export default function App() {
                 <div className="pl-4 space-y-1">
                   <button
                     type="button"
-                    onClick={() => setActiveView('view-rekapitulasi')}
+                    onClick={() => navigateTo('view-rekapitulasi')}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                       activeView === 'view-rekapitulasi'
                         ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -604,7 +632,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveView('view-kategori-usia')}
+                    onClick={() => navigateTo('view-kategori-usia')}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                       activeView === 'view-kategori-usia'
                         ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -649,7 +677,7 @@ export default function App() {
                   <div className="pl-4 space-y-1">
                     <button
                       type="button"
-                      onClick={() => setActiveView('view-profil-sekolah')}
+                      onClick={() => navigateTo('view-profil-sekolah')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                         activeView === 'view-profil-sekolah'
                           ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -661,7 +689,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveView('view-upload-logo')}
+                      onClick={() => navigateTo('view-upload-logo')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                         activeView === 'view-upload-logo'
                           ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -673,7 +701,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveView('view-input-penjabat')}
+                      onClick={() => navigateTo('view-input-penjabat')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                         activeView === 'view-input-penjabat'
                           ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -685,7 +713,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveView('view-data-pengguna')}
+                      onClick={() => navigateTo('view-data-pengguna')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                         activeView === 'view-data-pengguna'
                           ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -731,7 +759,7 @@ export default function App() {
                   {isAdmin && (
                     <button
                       type="button"
-                      onClick={() => setActiveView('view-master-siswa')}
+                      onClick={() => navigateTo('view-master-siswa')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                         activeView === 'view-master-siswa'
                           ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -744,7 +772,7 @@ export default function App() {
                   )}
                   <button
                     type="button"
-                    onClick={() => setActiveView('view-form-8355-cetak')}
+                    onClick={() => navigateTo('view-form-8355-cetak')}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
                       activeView === 'view-form-8355-cetak'
                         ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -763,7 +791,7 @@ export default function App() {
           <div className="space-y-1 pt-2 border-t border-slate-800/60">
             <button
               type="button"
-              onClick={() => setActiveView('view-daftar-siswa')}
+              onClick={() => navigateTo('view-daftar-siswa')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-left ${
                 activeView === 'view-daftar-siswa'
                   ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -775,7 +803,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveView('view-daftar-absen')}
+              onClick={() => navigateTo('view-daftar-absen')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-left ${
                 activeView === 'view-daftar-absen'
                   ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -787,7 +815,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveView('view-daftar-mutasi')}
+              onClick={() => navigateTo('view-daftar-mutasi')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition text-left ${
                 activeView === 'view-daftar-mutasi'
                   ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
@@ -846,13 +874,21 @@ export default function App() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-100 dark:bg-slate-900">
         
         {/* TOP HEADER BAR */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between z-10 flex-shrink-0 no-print">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between z-10 flex-shrink-0 no-print">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              title="Buka Navigasi"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hidden sm:block">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-base text-slate-800 dark:text-white">
+              <h2 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white truncate max-w-[200px] sm:max-w-none">
                 {viewHeaders[activeView]?.title || 'Sistem Data Form 8355'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">

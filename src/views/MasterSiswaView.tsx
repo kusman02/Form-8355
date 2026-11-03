@@ -95,6 +95,8 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
           }
         } catch {
           showToast("Gagal membaca berkas Excel. Pastikan format kolom sesuai.");
+        } finally {
+          e.target.value = '';
         }
       };
       reader.readAsBinaryString(file);

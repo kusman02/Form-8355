@@ -59,6 +59,7 @@ export const PejabatWaliView: React.FC<PejabatWaliViewProps> = ({
         showToast("Tanda tangan digital berhasil diunggah!");
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
   };
 
@@ -124,6 +125,8 @@ export const PejabatWaliView: React.FC<PejabatWaliViewProps> = ({
           }
         } catch {
           showToast("Gagal membaca berkas Excel. Pastikan format sesuai template.");
+        } finally {
+          e.target.value = '';
         }
       };
       reader.readAsBinaryString(file);

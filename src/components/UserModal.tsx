@@ -61,6 +61,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         setAvatarUrl(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
   };
 

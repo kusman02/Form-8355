@@ -40,6 +40,7 @@ export const UploadLogoView: React.FC<UploadLogoViewProps> = ({
         showToast("Logo berhasil diperbarui!");
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     }
   };
 
