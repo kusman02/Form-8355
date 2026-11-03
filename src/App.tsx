@@ -40,6 +40,7 @@ import { WaliKelasModal } from './components/WaliKelasModal';
 import { UserModal } from './components/UserModal';
 import { MutasiModal } from './components/MutasiModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { SchoolLogo, UserAvatar } from './components/BrandLogos';
 
 // Icons
 import {
@@ -296,6 +297,29 @@ export default function App() {
     });
   };
 
+  const handleDeleteAllStudents = () => {
+    if (students.length === 0) {
+      showToast("Data peserta didik sudah kosong.");
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Konfirmasi Hapus Semua Data Siswa",
+      message: `PERINGATAN: Apakah Anda yakin ingin menghapus SELURUH data peserta didik (${students.length} siswa) dari Master Data Buku Induk Form 8355? Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: "Hapus Semua Siswa",
+      cancelText: "Batal",
+      variant: "danger",
+      iconType: "trash",
+      onConfirm: () => {
+        const totalDeleted = students.length;
+        setStudents([]);
+        localStorage.setItem('smpn18_students', JSON.stringify([]));
+        showToast(`Seluruh data peserta didik (${totalDeleted} siswa) berhasil dihapus.`);
+      }
+    });
+  };
+
   const handleImportStudents = (imported: Student[]) => {
     setStudents(prev => {
       // Merge unique by NIS or NISN
@@ -491,6 +515,8 @@ export default function App() {
           userAccounts={userAccounts}
           npsn={school.npsn}
           defaultTahunAjaran={tahunAjaran}
+          logos={logos}
+          schoolName={logos.sidebarTextName || school.name}
           onLoginSuccess={(account, selectedTahunAjaran) => {
             setCurrentUser(account);
             if (selectedTahunAjaran) {
@@ -520,16 +546,17 @@ export default function App() {
       <aside className="w-72 bg-[#090d16] text-slate-300 flex flex-col flex-shrink-0 transition-all duration-300 z-30 select-none border-r border-slate-800/60 no-print">
         {/* Sidebar Header */}
         <div className="p-4 flex items-center space-x-3 border-b border-slate-800/80">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-lg shadow-lg shadow-blue-500/30 overflow-hidden">
-            {logos.sidebarLogoUrl ? (
-              <img src={logos.sidebarLogoUrl} alt="Logo" className="w-full h-full object-cover" />
-            ) : (
-              <span>18</span>
-            )}
+          <div className="w-10 h-10 rounded-xl bg-blue-900/30 border border-blue-500/40 text-white font-bold flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden p-1 flex-shrink-0">
+            <SchoolLogo
+              url={logos.sidebarLogoUrl || logos.sekolahLogoUrl}
+              alt={logos.sidebarTextName || school.name}
+              className="w-full h-full object-contain"
+              fallbackClassName="w-full h-full"
+            />
           </div>
           <div className="overflow-hidden">
             <h1 className="font-bold text-white text-base leading-tight truncate">
-              {logos.sidebarTextName || school.name}
+              {logos.sidebarTextName || school.name || 'SMPN 18 JAKARTA'}
             </h1>
             <p className="text-xs text-blue-400 font-medium flex items-center gap-1 mt-0.5">
               <Sparkles className="w-3 h-3" />
@@ -776,15 +803,21 @@ export default function App() {
         {/* User Profile Footer */}
         <div className="p-3 border-t border-slate-800/80 bg-[#070a10] flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow">
-              {(currentUser?.nama || 'U').charAt(0).toUpperCase()}
+            <div className="relative flex-shrink-0">
+              <UserAvatar
+                url={currentUser?.avatarUrl}
+                role={currentUser?.role}
+                name={currentUser?.nama}
+                size="md"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#070a10]" title="Akun Aktif Online"></span>
             </div>
             <div className="overflow-hidden">
-              <div className="text-xs font-semibold text-white truncate">
+              <div className="text-xs font-semibold text-white truncate" title={currentUser?.nama}>
                 {currentUser?.nama || 'User Pengguna'}
               </div>
-              <div className="text-[10px] text-emerald-400 font-medium">
-                {currentUser?.role || 'Guest'}
+              <div className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                <span>{currentUser?.role || 'Guest'}</span>
               </div>
             </div>
           </div>
@@ -842,6 +875,20 @@ export default function App() {
             >
               {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
+
+            {/* Account Profile Badge in Header */}
+            <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-slate-200 dark:border-slate-800">
+              <UserAvatar
+                url={currentUser?.avatarUrl}
+                role={currentUser?.role}
+                name={currentUser?.nama}
+                size="sm"
+              />
+              <div className="text-left text-xs leading-tight">
+                <div className="font-bold text-slate-800 dark:text-white truncate max-w-[130px]">{currentUser?.nama}</div>
+                <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">{currentUser?.role}</div>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -917,6 +964,7 @@ export default function App() {
               onOpenAddModal={() => setStudentModal({ isOpen: true, student: null })}
               onOpenEditModal={(student) => setStudentModal({ isOpen: true, student })}
               onDeleteStudent={handleDeleteStudent}
+              onDeleteAllStudents={handleDeleteAllStudents}
               onImportStudents={handleImportStudents}
               showToast={showToast}
             />

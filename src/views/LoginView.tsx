@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { UserAccount, UserRole } from '../types';
+import { UserAccount, UserRole, LogoConfig } from '../types';
 import { Shield, User, Lock, Eye, EyeOff, ArrowRight, ChevronDown, Sparkles, Calendar } from 'lucide-react';
+import { SchoolLogo, UserAvatar } from '../components/BrandLogos';
 
 interface LoginViewProps {
   userAccounts: UserAccount[];
   npsn: string;
   defaultTahunAjaran?: string;
+  logos?: LogoConfig;
+  schoolName?: string;
   onLoginSuccess: (account: UserAccount, tahunAjaran: string) => void;
   showToast: (msg: string) => void;
 }
@@ -14,6 +17,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   userAccounts,
   npsn,
   defaultTahunAjaran,
+  logos,
+  schoolName = "SMP NEGERI 18 JAKARTA",
   onLoginSuccess,
   showToast
 }) => {
@@ -49,6 +54,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
+  const currentRoleAccount = userAccounts.find(u => u.role === role);
+  const activeLogoUrl = logos?.sidebarLogoUrl || logos?.sekolahLogoUrl;
+
   return (
     <div className="fixed inset-0 z-50 bg-[#040711] flex flex-col justify-between text-white overflow-y-auto select-none bg-grid-pattern">
       {/* Glowing Light Orbs in Background */}
@@ -59,12 +67,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Top Navigation Header */}
       <header className="py-2.5 px-4 sm:px-8 flex items-center justify-between border-b border-blue-900/30 bg-[#040711]/80 backdrop-blur-md relative z-20 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 border border-cyan-400/50 flex items-center justify-center text-cyan-200 font-extrabold text-sm shadow-lg shadow-blue-600/30">
-            18
+          <div className="w-10 h-10 rounded-xl bg-[#090e1d] border border-cyan-400/50 flex items-center justify-center p-1 shadow-lg shadow-blue-600/30 overflow-hidden flex-shrink-0">
+            <SchoolLogo 
+              url={activeLogoUrl} 
+              alt={schoolName}
+              className="w-full h-full object-contain"
+              fallbackClassName="w-full h-full"
+            />
           </div>
           <div>
             <h1 className="font-bold text-white text-xs sm:text-sm leading-tight tracking-wide flex items-center gap-2">
-              <span>SMP NEGERI 18 JAKARTA</span>
+              <span>{schoolName || 'SMP NEGERI 18 JAKARTA'}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
             </h1>
             <p className="text-[10px] sm:text-[11px] text-cyan-400 font-medium">Sistem Informasi Data Siswa Form 8355</p>
@@ -77,23 +90,28 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <span className="font-semibold text-[11px] text-cyan-200">Sistem Online & Aktif</span>
           </div>
           <div className="text-xs text-slate-400 font-mono bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800">
-            NPSN: <span className="text-cyan-300 font-bold">{npsn}</span>
+            NPSN: <span className="text-cyan-300 font-bold">{npsn || '20102570'}</span>
           </div>
         </div>
       </header>
 
       {/* Center Login Card */}
       <main className="flex-1 flex items-center justify-center px-4 py-4 sm:py-6 relative z-20 my-auto">
-        <div className="w-full max-w-[410px] glass-card-glow rounded-2xl sm:rounded-3xl p-5 sm:p-6 sm:py-7 relative overflow-hidden space-y-4 sm:space-y-5 shadow-2xl">
+        <div className="w-full max-w-[420px] glass-card-glow rounded-2xl sm:rounded-3xl p-5 sm:p-6 sm:py-7 relative overflow-hidden space-y-4 sm:space-y-5 shadow-2xl">
           {/* Top Accent Neon Bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 shadow-[0_0_12px_#38bdf8]"></div>
 
           {/* Logo Badge */}
           <div className="flex flex-col items-center text-center space-y-2">
             <div className="relative">
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 blur opacity-60 animate-pulse"></div>
-              <div className="relative w-13 h-13 rounded-2xl bg-[#090e1d] border border-cyan-400/50 flex items-center justify-center text-amber-300 font-black text-xl shadow-xl">
-                18
+              <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 blur opacity-60 animate-pulse"></div>
+              <div className="relative w-16 h-16 rounded-2xl bg-[#080d1a] border border-cyan-400/60 flex items-center justify-center p-1.5 shadow-2xl overflow-hidden">
+                <SchoolLogo 
+                  url={logos?.sekolahLogoUrl || logos?.sidebarLogoUrl} 
+                  alt={schoolName}
+                  className="w-full h-full object-contain"
+                  fallbackClassName="w-full h-full"
+                />
               </div>
             </div>
             <div>
@@ -107,13 +125,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
             <div>
-              <label className="block text-[11px] sm:text-xs font-semibold text-slate-300 mb-1">Kategori User</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] sm:text-xs font-semibold text-slate-300">Kategori User & Akun</label>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-950/80 border border-cyan-500/30 text-[10px] text-cyan-300">
+                  <UserAvatar url={currentRoleAccount?.avatarUrl} role={role} name={currentRoleAccount?.nama || role} size="xs" />
+                  <span className="font-semibold">{role}</span>
+                </div>
+              </div>
               <div className="relative group">
-                <Shield className="w-4 h-4 absolute left-3.5 top-2.5 text-cyan-500 group-focus-within:text-cyan-300 transition" />
+                <div className="absolute left-3 top-2 flex items-center pointer-events-none">
+                  <UserAvatar url={currentRoleAccount?.avatarUrl} role={role} name={role} size="xs" />
+                </div>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full pl-10 pr-9 py-2 rounded-xl border border-blue-900/50 bg-[#060a14]/90 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/70 focus:border-cyan-400 transition shadow-inner appearance-none cursor-pointer"
+                  className="w-full pl-9 pr-9 py-2 rounded-xl border border-blue-900/50 bg-[#060a14]/90 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/70 focus:border-cyan-400 transition shadow-inner appearance-none cursor-pointer"
                 >
                   <option value="Admin" className="bg-[#090e1d] text-white">Admin (Akses Penuh)</option>
                   <option value="Kepala Sekolah" className="bg-[#090e1d] text-white">Kepala Sekolah (Monitoring)</option>

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { LogoConfig } from '../types';
 import { Image, Upload, RotateCcw, Sparkles, Save } from 'lucide-react';
 import { initialLogoConfig } from '../data/initialData';
+import { SchoolEmblemSvg, SchoolLogo } from '../components/BrandLogos';
 
 interface UploadLogoViewProps {
   logos: LogoConfig;
@@ -136,9 +137,7 @@ export const UploadLogoView: React.FC<UploadLogoViewProps> = ({
               {logos.sekolahLogoUrl ? (
                 <img src={logos.sekolahLogoUrl} className="max-h-full max-w-full object-contain" alt="Logo Sekolah" />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-blue-800 border-2 border-amber-400 flex items-center justify-center text-amber-300 font-extrabold text-2xl shadow">
-                  18
-                </div>
+                <SchoolEmblemSvg className="w-20 h-20" />
               )}
             </div>
 
@@ -169,8 +168,9 @@ export const UploadLogoView: React.FC<UploadLogoViewProps> = ({
               {logos.sidebarLogoUrl ? (
                 <img src={logos.sidebarLogoUrl} className="max-h-full max-w-full object-contain" alt="Logo Sidebar" />
               ) : (
-                <div className="w-20 h-20 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-2xl shadow-lg shadow-blue-500/30">
-                  18
+                <div className="flex flex-col items-center justify-center">
+                  <SchoolLogo url={logos.sekolahLogoUrl} className="w-16 h-16 object-contain" fallbackClassName="w-16 h-16" />
+                  <span className="text-[9px] text-slate-400 mt-1 font-medium">Bawaan Sistem</span>
                 </div>
               )}
             </div>

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserAccount, UserRole } from '../types';
-import { X, Shield, Save, Eye, EyeOff } from 'lucide-react';
+import { X, Shield, Save, Eye, EyeOff, Upload, Trash2 } from 'lucide-react';
+import { UserAvatar } from './BrandLogos';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -21,7 +22,9 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('Admin');
   const [info, setInfo] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -31,6 +34,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       setPassword(user.password || '');
       setRole(user.role || 'Admin');
       setInfo(user.info || '');
+      setAvatarUrl(user.avatarUrl);
     } else {
       setNama('');
       setEmail('');
@@ -38,11 +42,27 @@ export const UserModal: React.FC<UserModalProps> = ({
       setPassword('');
       setRole('Admin');
       setInfo('');
+      setAvatarUrl(undefined);
     }
     setShowPassword(false);
   }, [user, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Ukuran foto profil maksimal 2MB!");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAvatarUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +75,8 @@ export const UserModal: React.FC<UserModalProps> = ({
       username: username.trim(),
       password: password.trim(),
       role,
-      info: info.trim()
+      info: info.trim(),
+      avatarUrl
     });
     onClose();
   };
@@ -87,6 +108,44 @@ export const UserModal: React.FC<UserModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-3.5">
+          {/* Avatar / Logo Akun Section */}
+          <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
+            <UserAvatar url={avatarUrl} role={role} name={nama || 'User'} size="lg" />
+            <div className="flex-1 space-y-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Logo / Foto Profil Akun
+              </label>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                Gunakan lambang resmi peran atau unggah foto khusus
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarFile}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-sm transition active:scale-95"
+                >
+                  <Upload className="w-3 h-3" /> Unggah Foto
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl(undefined)}
+                    className="px-2.5 py-1 text-slate-500 hover:text-red-500 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition"
+                  >
+                    <Trash2 className="w-3 h-3" /> Reset Lambang
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Nama Lengkap Pengguna <span className="text-rose-500">*</span>

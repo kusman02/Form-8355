@@ -10,6 +10,7 @@ interface MasterSiswaViewProps {
   onOpenAddModal: () => void;
   onOpenEditModal: (student: Student) => void;
   onDeleteStudent: (id: string | number) => void;
+  onDeleteAllStudents: () => void;
   onImportStudents: (imported: Student[]) => void;
   showToast: (msg: string) => void;
 }
@@ -20,6 +21,7 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
   onOpenAddModal,
   onOpenEditModal,
   onDeleteStudent,
+  onDeleteAllStudents,
   onImportStudents,
   showToast
 }) => {
@@ -144,7 +146,7 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
           <button
             type="button"
             onClick={downloadStudentTemplate}
-            className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 shadow-sm transition active:scale-95"
+            className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
           >
             <Download className="w-4 h-4 text-emerald-600" /> Template Excel
           </button>
@@ -152,7 +154,7 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
           <button
             type="button"
             onClick={() => fileImportRef.current?.click()}
-            className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 shadow-sm transition active:scale-95"
+            className="px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
           >
             <Upload className="w-4 h-4 text-blue-600" /> Impor Excel
           </button>
@@ -160,15 +162,25 @@ export const MasterSiswaView: React.FC<MasterSiswaViewProps> = ({
           <button
             type="button"
             onClick={() => exportStudentsToExcel(filteredStudents, filterRombel)}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition active:scale-95"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" /> Ekspor Excel
           </button>
 
           <button
             type="button"
+            onClick={onDeleteAllStudents}
+            disabled={students.length === 0}
+            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+            title="Hapus seluruh data siswa dari Buku Induk"
+          >
+            <Trash2 className="w-4 h-4" /> Hapus Semua Data
+          </button>
+
+          <button
+            type="button"
             onClick={onOpenAddModal}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition active:scale-95"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Tambah Data Siswa
           </button>

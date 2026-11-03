@@ -143,6 +143,40 @@
   border: 1px solid #000 !important;
 }
 
+.table-daftarsiswa {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: fixed !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+.table-daftarsiswa th,
+.table-daftarsiswa td {
+  border: 1px solid #0f172a !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+}
+
+.table-daftarsiswa th {
+  background-color: #f1f5f9 !important;
+  padding: 4px 4px !important;
+  font-weight: 700 !important;
+  height: 26px !important;
+}
+
+.table-daftarsiswa td {
+  padding-top: 2.5px !important;
+  padding-bottom: 2.5px !important;
+  height: 23px !important;
+}
+
+.html2pdf__page-break,
+.page-break-after {
+  page-break-after: always !important;
+  break-after: page !important;
+}
+
 /* Print Media Styling */
 @media print {
   @page {

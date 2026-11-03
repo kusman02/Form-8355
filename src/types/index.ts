@@ -8,6 +8,7 @@ export interface UserAccount {
   password: string;
   role: UserRole;
   info: string;
+  avatarUrl?: string;
 }
 
 export interface Student {

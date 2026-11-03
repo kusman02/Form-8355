@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, UserRole } from '../types';
 import { Shield, Briefcase, GraduationCap, UserPlus, Search, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { UserAvatar } from '../components/BrandLogos';
 
 interface DataPenggunaViewProps {
   users: UserAccount[];
@@ -171,13 +172,18 @@ export const DataPenggunaView: React.FC<DataPenggunaViewProps> = ({
                   <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                     <td className="py-3 px-4 text-center font-bold text-slate-500">{idx + 1}</td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <span>{u.nama}</span>
-                        {currentUser?.id === u.id && (
-                          <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded">Akun Anda</span>
-                        )}
+                      <div className="flex items-center gap-3">
+                        <UserAvatar url={u.avatarUrl} role={u.role} name={u.nama} size="sm" />
+                        <div>
+                          <div className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span>{u.nama}</span>
+                            {currentUser?.id === u.id && (
+                              <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded">Akun Anda</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">{u.email || '-'}</div>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono">{u.email || '-'}</div>
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-700 dark:text-slate-200">{u.username}</td>
                     <td className="py-3 px-4 font-mono text-slate-500">••••••••</td>
