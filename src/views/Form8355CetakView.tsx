@@ -277,7 +277,7 @@ export const Form8355CetakView: React.FC<Form8355CetakViewProps> = ({
                 </div>
 
                 <div className="text-center space-y-1">
-                  <p>Jakarta, 30 Oktober 2026</p>
+                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
                   <div className="h-12 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (

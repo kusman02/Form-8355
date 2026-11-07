@@ -53,6 +53,8 @@ export interface SchoolProfile {
   name: string;
   npsn: string;
   address: string;
+  tempat?: string;   // e.g. "Jakarta"
+  tanggal?: string;  // e.g. "30 Oktober 2026"
 }
 
 export interface Officials {
@@ -75,6 +77,7 @@ export type ActiveView =
   | 'view-rekapitulasi'
   | 'view-kategori-usia'
   | 'view-profil-sekolah'
+  | 'view-tahun-ajaran'
   | 'view-upload-logo'
   | 'view-input-penjabat'
   | 'view-data-pengguna'

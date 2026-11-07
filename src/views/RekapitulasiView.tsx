@@ -198,7 +198,7 @@ export const RekapitulasiView: React.FC<RekapitulasiViewProps> = ({
           {/* Legal Signature Area */}
           <div className="mt-8 flex justify-end items-start text-xs font-semibold px-4">
             <div className="text-center space-y-0.5 min-w-[210px] text-xs">
-              <p className="text-slate-800">Jakarta, 30 Oktober 2026</p>
+              <p className="text-slate-800">{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
               <p className="font-bold text-slate-900">Kepala {school.name || 'SMP Negeri 18 Jakarta'}</p>
               <div className="h-14 flex items-center justify-center my-1">
                 {officials.kepsekTtdUrl && (

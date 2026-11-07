@@ -290,8 +290,8 @@ export const KategoriUsiaView: React.FC<KategoriUsiaViewProps> = ({
           {/* Signature Area */}
           <div className="mt-8 flex justify-end items-start text-xs font-semibold pr-8">
             <div className="text-center space-y-1">
-              <p>Jakarta, 30 Oktober 2026</p>
-              <p className="font-bold">Kepala {school.name}</p>
+              <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+              <p className="font-bold">Kepala {school.name || 'Sekolah'}</p>
               <div className="h-16 flex items-center justify-center">
                 {officials.kepsekTtdUrl && (
                   <img src={officials.kepsekTtdUrl} alt="TTD Kepsek" className="max-h-16 object-contain" />

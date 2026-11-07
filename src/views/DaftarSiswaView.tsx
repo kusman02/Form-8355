@@ -81,7 +81,7 @@ export const DaftarSiswaView: React.FC<DaftarSiswaViewProps> = ({
         }
 
         sheetData.push([""]);
-        sheetData.push(["", "", "", "", "", "Jakarta, 30 Oktober 2026"]);
+        sheetData.push(["", "", "", "", "", `${school.tempat || 'Jakarta'}, ${school.tanggal || '30 Oktober 2026'}`]);
         sheetData.push(["", "", "", "", "", `Wali Kelas ${rombel}`]);
         sheetData.push([""]);
         sheetData.push([""]);
@@ -235,7 +235,7 @@ export const DaftarSiswaView: React.FC<DaftarSiswaViewProps> = ({
                           const s = classStudents[rowIdx];
                           if (s) {
                             return (
-                              <tr key={s.id || rowIdx} className="h-[22.5px] hover:bg-slate-50/50">
+                              <tr key={s.id || rowIdx} className="h-[22.5px] hover:bg-slate-50">
                                 <td className="border border-slate-900 text-center align-middle font-bold text-[9.5px] px-1 py-[3px]">
                                   {rowIdx + 1}
                                 </td>
@@ -282,7 +282,7 @@ export const DaftarSiswaView: React.FC<DaftarSiswaViewProps> = ({
                 {/* Footer Signature Area (Diperkecil dan rapi merapat ke bawah tabel) */}
                 <div className="mt-2 flex justify-end items-start text-xs font-semibold px-4 pt-1">
                   <div className="text-center text-[9px] space-y-0.5 leading-snug">
-                    <p className="text-slate-800">Jakarta, 30 Oktober 2026</p>
+                    <p className="text-slate-800">{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
                     <p className="font-bold text-slate-900">Wali Kelas {rombel}</p>
                     <div className="h-7 flex items-center justify-center">
                       {/* Space for signature stamp/sign */}

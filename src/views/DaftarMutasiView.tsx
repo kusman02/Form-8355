@@ -411,7 +411,7 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
               {/* Signature Area */}
               <div className="mt-8 flex justify-end items-start text-xs font-semibold px-6">
                 <div className="text-center space-y-1">
-                  <p>Jakarta, 30 Oktober 2026</p>
+                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
                   <div className="h-16 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (
@@ -567,7 +567,7 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
               {/* Legal Signature */}
               <div className="mt-6 flex justify-end items-start text-xs font-semibold px-6">
                 <div className="text-center space-y-1">
-                  <p>Jakarta, 30 Oktober 2026</p>
+                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
                   <div className="h-12 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (

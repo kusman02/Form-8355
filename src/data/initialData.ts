@@ -5,7 +5,9 @@ export const initialSchoolProfile: SchoolProfile = {
   dinas: "",
   name: "",
   npsn: "",
-  address: ""
+  address: "",
+  tempat: "Jakarta",
+  tanggal: "30 Oktober 2026"
 };
 
 export const initialOfficials: Officials = {

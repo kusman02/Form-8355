@@ -25,6 +25,7 @@ import { LoginView } from './views/LoginView';
 import { RekapitulasiView } from './views/RekapitulasiView';
 import { KategoriUsiaView } from './views/KategoriUsiaView';
 import { ProfilSekolahView } from './views/ProfilSekolahView';
+import { TahunAjaranView } from './views/TahunAjaranView';
 import { UploadLogoView } from './views/UploadLogoView';
 import { PejabatWaliView } from './views/PejabatWaliView';
 import { DataPenggunaView } from './views/DataPenggunaView';
@@ -240,6 +241,7 @@ export default function App() {
     if (!isAdmin && isLoggedIn) {
       const restrictedViews: ActiveView[] = [
         'view-profil-sekolah',
+        'view-tahun-ajaran',
         'view-upload-logo',
         'view-input-penjabat',
         'view-data-pengguna',
@@ -482,6 +484,10 @@ export default function App() {
       title: 'Profil Sekolah & Kustomisasi Header Kop',
       subtitle: 'Atur identitas lembaga yang akan dicetak di semua formulir resmi'
     },
+    'view-tahun-ajaran': {
+      title: 'Pengaturan Tahun Ajaran / Pelajaran',
+      subtitle: 'Kelola dan tentukan tahun pelajaran aktif yang berlaku untuk seluruh formulir cetak dan buku induk'
+    },
     'view-upload-logo': {
       title: 'Pengaturan Logo Dokumen & Identitas Sidebar',
       subtitle: 'Unggah logo kustom untuk kop surat resmi F4 dan navigasi samping'
@@ -658,14 +664,14 @@ export default function App() {
                   type="button"
                   onClick={() => setAccPengaturan(!accPengaturan)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                    activeView === 'view-profil-sekolah' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
+                    activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
                       ? 'text-sky-300 bg-sky-950/40 border border-sky-500/30'
                       : 'hover:bg-slate-800/60 text-slate-300'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Settings className={`w-4 h-4 ${
-                      activeView === 'view-profil-sekolah' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
+                      activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
                         ? 'text-sky-400'
                         : 'text-slate-400'
                     }`} />
@@ -686,6 +692,18 @@ export default function App() {
                     >
                       <School className="w-3.5 h-3.5" />
                       <span>Profil Sekolah</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('view-tahun-ajaran')}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
+                        activeView === 'view-tahun-ajaran'
+                          ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Tahun Ajaran</span>
                     </button>
                     <button
                       type="button"
@@ -958,6 +976,24 @@ export default function App() {
               school={school}
               onSave={setSchool}
               showToast={showToast}
+              tahunAjaran={tahunAjaran}
+              onSaveTahunAjaran={(newTA) => {
+                setTahunAjaran(newTA);
+                localStorage.setItem('smpn18_tahun_ajaran', newTA);
+                showToast(`Tahun Ajaran berhasil diubah menjadi ${newTA}`);
+              }}
+            />
+          )}
+
+          {activeView === 'view-tahun-ajaran' && isAdmin && (
+            <TahunAjaranView
+              tahunAjaran={tahunAjaran}
+              onSaveTahunAjaran={(newTA) => {
+                setTahunAjaran(newTA);
+                localStorage.setItem('smpn18_tahun_ajaran', newTA);
+                showToast(`Tahun Ajaran berhasil diubah menjadi ${newTA}`);
+              }}
+              showToast={showToast}
             />
           )}
 
@@ -1036,6 +1072,7 @@ export default function App() {
               school={school}
               waliList={waliList}
               officials={officials}
+              logos={logos}
               rombelList={defaultRombels}
               tahunAjaran={tahunAjaran}
               showToast={showToast}
