@@ -23,7 +23,9 @@ import {
   getStoredTahunAjaran,
   setStoredTahunAjaran,
   getStoredSignatureLocationDate,
-  setStoredSignatureLocationDate
+  setStoredSignatureLocationDate,
+  isElectronApp,
+  syncCollectionToDatabase
 } from './utils/electronBridge';
 
 // Views
@@ -35,6 +37,7 @@ import { TahunAjaranView } from './views/TahunAjaranView';
 import { UploadLogoView } from './views/UploadLogoView';
 import { PejabatWaliView } from './views/PejabatWaliView';
 import { DataPenggunaView } from './views/DataPenggunaView';
+import { DatabaseDesktopView } from './views/DatabaseDesktopView';
 import { MasterSiswaView } from './views/MasterSiswaView';
 import { Form8355CetakView } from './views/Form8355CetakView';
 import { DaftarSiswaView } from './views/DaftarSiswaView';
@@ -192,40 +195,84 @@ export default function App() {
     onConfirm: () => {}
   });
 
-  // Effects: Save changes to LocalStorage and Electron Bridge
+  // Initial Hydration from Electron Database (if running in Electron)
+  useEffect(() => {
+    if (isElectronApp() && window.electronAPI?.db?.getAll) {
+      window.electronAPI.db.getAll().then((data) => {
+        if (data && typeof data === 'object') {
+          if (data.school && typeof data.school === 'object' && Object.keys(data.school).length > 0) {
+            setSchool(data.school);
+          }
+          if (data.officials && typeof data.officials === 'object' && Object.keys(data.officials).length > 0) {
+            setOfficials(data.officials);
+          }
+          if (data.logos && typeof data.logos === 'object' && Object.keys(data.logos).length > 0) {
+            setLogos(data.logos);
+          }
+          if (Array.isArray(data.userAccounts) && data.userAccounts.length > 0) {
+            setUserAccounts(data.userAccounts);
+          }
+          if (Array.isArray(data.waliList) && data.waliList.length > 0) {
+            setWaliList(data.waliList);
+          }
+          if (Array.isArray(data.students) && data.students.length > 0) {
+            setStudents(data.students);
+          }
+          if (Array.isArray(data.mutasiList)) {
+            setMutasiList(data.mutasiList);
+          }
+          if (data.tahunAjaran && typeof data.tahunAjaran === 'string') {
+            setTahunAjaran(data.tahunAjaran);
+          }
+        }
+      }).catch(err => {
+        console.warn('Initial electron DB hydration error:', err);
+      });
+    }
+  }, []);
+
+  // Effects: Save changes to LocalStorage and Electron Native Database Engine
   useEffect(() => {
     localStorage.setItem('smpn18_schoolProfile_v2', JSON.stringify(school));
     if (school.tempat || school.tanggal) {
       setStoredSignatureLocationDate(school.tempat || 'Jakarta', school.tanggal || '30 Oktober 2026');
     }
+    syncCollectionToDatabase('school', school);
   }, [school]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_officials_v2', JSON.stringify(officials));
+    syncCollectionToDatabase('officials', officials);
   }, [officials]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_logos', JSON.stringify(logos));
+    syncCollectionToDatabase('logos', logos);
   }, [logos]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_userAccounts', JSON.stringify(userAccounts));
+    syncCollectionToDatabase('userAccounts', userAccounts);
   }, [userAccounts]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_waliList', JSON.stringify(waliList));
+    syncCollectionToDatabase('waliList', waliList);
   }, [waliList]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_students', JSON.stringify(students));
+    syncCollectionToDatabase('students', students);
   }, [students]);
 
   useEffect(() => {
     localStorage.setItem('smpn18_mutasiList', JSON.stringify(mutasiList));
+    syncCollectionToDatabase('mutasiList', mutasiList);
   }, [mutasiList]);
 
   useEffect(() => {
     setStoredTahunAjaran(tahunAjaran);
+    syncCollectionToDatabase('tahunAjaran', tahunAjaran);
   }, [tahunAjaran]);
 
   useEffect(() => {
@@ -260,6 +307,7 @@ export default function App() {
         'view-upload-logo',
         'view-input-penjabat',
         'view-data-pengguna',
+        'view-database-desktop',
         'view-master-siswa'
       ];
       if (restrictedViews.includes(activeView)) {
@@ -515,6 +563,10 @@ export default function App() {
       title: 'Data Pengguna Aplikasi Form 8355',
       subtitle: 'Manajemen akun pengguna dan otorisasi akses sistem'
     },
+    'view-database-desktop': {
+      title: 'Pusat Manajemen Database & Backup Desktop',
+      subtitle: 'Penyimpanan berkas offline, pencadangan otomatis, dan pemulihan data'
+    },
     'view-master-siswa': {
       title: 'Master Data Siswa (Buku Induk Form 8355)',
       subtitle: 'Kelola basis data siswa lengkap dengan impor/ekspor Excel'
@@ -679,14 +731,14 @@ export default function App() {
                   type="button"
                   onClick={() => setAccPengaturan(!accPengaturan)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                    activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
+                    activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna' || activeView === 'view-database-desktop'
                       ? 'text-sky-300 bg-sky-950/40 border border-sky-500/30'
                       : 'hover:bg-slate-800/60 text-slate-300'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Settings className={`w-4 h-4 ${
-                      activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna'
+                      activeView === 'view-profil-sekolah' || activeView === 'view-tahun-ajaran' || activeView === 'view-upload-logo' || activeView === 'view-input-penjabat' || activeView === 'view-data-pengguna' || activeView === 'view-database-desktop'
                         ? 'text-sky-400'
                         : 'text-slate-400'
                     }`} />
@@ -755,6 +807,18 @@ export default function App() {
                     >
                       <Users className="w-3.5 h-3.5" />
                       <span>Data Pengguna</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('view-database-desktop')}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
+                        activeView === 'view-database-desktop'
+                          ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-semibold'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <Database className="w-3.5 h-3.5" />
+                      <span>Database & Backup</span>
                     </button>
                   </div>
                 )}
@@ -1049,6 +1113,31 @@ export default function App() {
               currentUser={currentUser}
               onOpenUserModal={(user) => setUserModal({ isOpen: true, user: user || null })}
               onDeleteUser={handleDeleteUser}
+              showToast={showToast}
+            />
+          )}
+
+          {activeView === 'view-database-desktop' && isAdmin && (
+            <DatabaseDesktopView
+              students={students}
+              waliList={waliList}
+              mutasiList={mutasiList}
+              userAccounts={userAccounts}
+              school={school}
+              officials={officials}
+              logos={logos}
+              tahunAjaran={tahunAjaran}
+              onRestoreData={(restored) => {
+                if (restored.students) setStudents(restored.students);
+                if (restored.waliList) setWaliList(restored.waliList);
+                if (restored.mutasiList) setMutasiList(restored.mutasiList);
+                if (restored.userAccounts) setUserAccounts(restored.userAccounts);
+                if (restored.schoolProfile) setSchool(restored.schoolProfile);
+                if (restored.officials) setOfficials(restored.officials);
+                if (restored.logos) setLogos(restored.logos);
+                if (restored.tahunAjaran) setTahunAjaran(restored.tahunAjaran);
+                showToast("Database berhasil dipulihkan dari cadangan!");
+              }}
               showToast={showToast}
             />
           )}

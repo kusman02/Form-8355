@@ -81,6 +81,7 @@ export type ActiveView =
   | 'view-upload-logo'
   | 'view-input-penjabat'
   | 'view-data-pengguna'
+  | 'view-database-desktop'
   | 'view-master-siswa'
   | 'view-form-8355-cetak'
   | 'view-daftar-siswa'
