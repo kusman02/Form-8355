@@ -19,6 +19,12 @@ import {
   initialMutasi,
   defaultRombels
 } from './data/initialData';
+import {
+  getStoredTahunAjaran,
+  setStoredTahunAjaran,
+  getStoredSignatureLocationDate,
+  setStoredSignatureLocationDate
+} from './utils/electronBridge';
 
 // Views
 import { LoginView } from './views/LoginView';
@@ -93,7 +99,13 @@ export default function App() {
   // State: Core App Data with LocalStorage Persistence
   const [school, setSchool] = useState<SchoolProfile>(() => {
     const saved = localStorage.getItem('smpn18_schoolProfile_v2');
-    return saved ? JSON.parse(saved) : initialSchoolProfile;
+    const baseProfile: SchoolProfile = saved ? JSON.parse(saved) : initialSchoolProfile;
+    const titimangsa = getStoredSignatureLocationDate(baseProfile.tempat || 'Jakarta', baseProfile.tanggal || '30 Oktober 2026');
+    return {
+      ...baseProfile,
+      tempat: baseProfile.tempat || titimangsa.tempat,
+      tanggal: baseProfile.tanggal || titimangsa.tanggal
+    };
   });
 
   const [officials, setOfficials] = useState<Officials>(() => {
@@ -126,9 +138,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialMutasi;
   });
 
-  // State: Tahun Ajaran / Pelajaran
+  // State: Tahun Ajaran / Pelajaran with Electron & Web persistence
   const [tahunAjaran, setTahunAjaran] = useState<string>(() => {
-    return localStorage.getItem('smpn18_tahun_ajaran') || '2026/2027';
+    return getStoredTahunAjaran('2026/2027');
   });
 
   // Authentication & Active User
@@ -180,9 +192,12 @@ export default function App() {
     onConfirm: () => {}
   });
 
-  // Effects: Save changes to LocalStorage
+  // Effects: Save changes to LocalStorage and Electron Bridge
   useEffect(() => {
     localStorage.setItem('smpn18_schoolProfile_v2', JSON.stringify(school));
+    if (school.tempat || school.tanggal) {
+      setStoredSignatureLocationDate(school.tempat || 'Jakarta', school.tanggal || '30 Oktober 2026');
+    }
   }, [school]);
 
   useEffect(() => {
@@ -210,7 +225,7 @@ export default function App() {
   }, [mutasiList]);
 
   useEffect(() => {
-    localStorage.setItem('smpn18_tahun_ajaran', tahunAjaran);
+    setStoredTahunAjaran(tahunAjaran);
   }, [tahunAjaran]);
 
   useEffect(() => {
@@ -974,12 +989,15 @@ export default function App() {
           {activeView === 'view-profil-sekolah' && isAdmin && (
             <ProfilSekolahView
               school={school}
-              onSave={setSchool}
+              onSave={(updated) => {
+                setSchool(updated);
+                setStoredSignatureLocationDate(updated.tempat || 'Jakarta', updated.tanggal || '30 Oktober 2026');
+              }}
               showToast={showToast}
               tahunAjaran={tahunAjaran}
               onSaveTahunAjaran={(newTA) => {
                 setTahunAjaran(newTA);
-                localStorage.setItem('smpn18_tahun_ajaran', newTA);
+                setStoredTahunAjaran(newTA);
                 showToast(`Tahun Ajaran berhasil diubah menjadi ${newTA}`);
               }}
             />
@@ -990,8 +1008,14 @@ export default function App() {
               tahunAjaran={tahunAjaran}
               onSaveTahunAjaran={(newTA) => {
                 setTahunAjaran(newTA);
-                localStorage.setItem('smpn18_tahun_ajaran', newTA);
+                setStoredTahunAjaran(newTA);
                 showToast(`Tahun Ajaran berhasil diubah menjadi ${newTA}`);
+              }}
+              school={school}
+              officials={officials}
+              onSaveSchool={(updated) => {
+                setSchool(updated);
+                setStoredSignatureLocationDate(updated.tempat || 'Jakarta', updated.tanggal || '30 Oktober 2026');
               }}
               showToast={showToast}
             />

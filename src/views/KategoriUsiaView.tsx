@@ -4,6 +4,7 @@ import { KopSurat } from '../components/KopSurat';
 import { calculateAge } from '../utils/helpers';
 import { Search, Filter, Printer } from 'lucide-react';
 import { downloadElementAsPDF } from '../utils/pdfExport';
+import { formatSignatureDate } from '../utils/electronBridge';
 
 interface KategoriUsiaViewProps {
   students: Student[];
@@ -290,7 +291,7 @@ export const KategoriUsiaView: React.FC<KategoriUsiaViewProps> = ({
           {/* Signature Area */}
           <div className="mt-8 flex justify-end items-start text-xs font-semibold pr-8">
             <div className="text-center space-y-1">
-              <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+              <p>{formatSignatureDate(school.tempat, school.tanggal)}</p>
               <p className="font-bold">Kepala {school.name || 'Sekolah'}</p>
               <div className="h-16 flex items-center justify-center">
                 {officials.kepsekTtdUrl && (

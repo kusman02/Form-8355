@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/Form-8355/',
+    base: process.env.ELECTRON === 'true' ? './' : '/Form-8355/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserAccount, UserRole, LogoConfig } from '../types';
 import { Shield, User, Lock, Eye, EyeOff, ArrowRight, ChevronDown, Sparkles, Calendar } from 'lucide-react';
 import { SchoolLogo, UserAvatar } from '../components/BrandLogos';
+import { getStoredTahunAjaran, setStoredTahunAjaran } from '../utils/electronBridge';
 
 interface LoginViewProps {
   userAccounts: UserAccount[];
@@ -23,7 +24,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   showToast
 }) => {
   const [role, setRole] = useState<UserRole>('Admin');
-  const [tahunAjaran, setTahunAjaran] = useState(defaultTahunAjaran || localStorage.getItem('smpn18_tahun_ajaran') || '2026/2027');
+  const [tahunAjaran, setTahunAjaran] = useState(() => defaultTahunAjaran || getStoredTahunAjaran('2026/2027'));
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,7 +44,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     );
 
     if (account) {
-      localStorage.setItem('smpn18_tahun_ajaran', cleanTahunAjaran);
+      setStoredTahunAjaran(cleanTahunAjaran);
       if (remember) {
         localStorage.setItem('smpn18_saved_user_id', String(account.id));
       }

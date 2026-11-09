@@ -5,6 +5,7 @@ import { SchoolLogo } from '../components/BrandLogos';
 import { Filter, Calendar, Printer, FileSpreadsheet, Layers } from 'lucide-react';
 import { downloadElementAsPDF } from '../utils/pdfExport';
 import * as XLSX from 'xlsx';
+import { formatSignatureDate } from '../utils/electronBridge';
 
 interface DaftarAbsenViewProps {
   students: Student[];
@@ -36,6 +37,7 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
   );
   const [filterBulan, setFilterBulan] = useState<string>('Oktober');
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [zoomScale, setZoomScale] = useState<'100' | '90' | '80'>('100');
 
   // Determine active classes to display/export
   const activeRombels = filterRombel === 'ALL'
@@ -231,6 +233,25 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                 : `Kelas ${filterRombel} (Pas 2 Lembar F4 Landscape)`}
             </span>
           </span>
+
+          {/* Zoom / Scale Selector */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-1.5">Skala:</span>
+            {(['100', '90', '80'] as const).map(scale => (
+              <button
+                key={scale}
+                type="button"
+                onClick={() => setZoomScale(scale)}
+                className={`px-2 py-0.5 text-xs font-bold rounded-lg transition ${
+                  zoomScale === scale
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                {scale}%
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
@@ -260,8 +281,15 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
       </div>
 
       {/* 2-PAGE LANDSCAPE F4 CONTAINER PER CLASS */}
-      <div className="flex flex-col items-center my-4 overflow-x-auto">
-        <div id="printable-daftarabsen-area" className="w-full max-w-[1080px] flex flex-col items-center">
+      <div className="flex flex-col items-center my-4 overflow-x-auto w-full pb-6">
+        <div
+          id="printable-daftarabsen-area"
+          className="w-[1060px] min-w-[1060px] flex flex-col items-center transition-transform origin-top"
+          style={{
+            transform: zoomScale === '90' ? 'scale(0.9)' : zoomScale === '80' ? 'scale(0.8)' : 'none',
+            marginBottom: zoomScale === '90' ? '-80px' : zoomScale === '80' ? '-160px' : '0px'
+          }}
+        >
           {activeRombels.map((rombel, rombelIdx) => {
             const classStudents = students.filter(
               s => s.rombel.replace(/^KELAS\s+/i, '').trim().toUpperCase() === rombel.toUpperCase()
@@ -282,14 +310,30 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
 
             const isLastClass = rombelIdx === activeRombels.length - 1;
 
-            const dateSignatureText = `${school.tempat || 'Jakarta'}, ${school.tanggal || `${daysCount} ${filterBulan} 2026`}`;
+            const dateSignatureText = formatSignatureDate(school.tempat, school.tanggal || `${daysCount} ${filterBulan} 2026`);
+
+            // Helper to check Sunday
+            const monthIndexMap: Record<string, number> = {
+              'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3,
+              'Mei': 4, 'Juni': 5, 'Juli': 6, 'Agustus': 7,
+              'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
+            };
+            const mIdx = monthIndexMap[filterBulan] ?? 9;
+            const startYear = parseInt(tahunAjaran.split('/')[0]) || 2026;
+            const targetYear = mIdx >= 6 ? startYear : startYear + 1;
+
+            const isSunday = (day: number): boolean => {
+              if (day > daysCount) return false;
+              const d = new Date(targetYear, mIdx, day);
+              return d.getDay() === 0;
+            };
 
             return (
               <React.Fragment key={rombel}>
                 {/* ==================== LEMBAR 1 (BARIS 1 - 20) ==================== */}
                 <div
-                  className="f4-landscape-page w-full max-w-[1080px] bg-white text-slate-900 border border-slate-300 shadow-xl rounded-xl p-3 sm:p-4 flex flex-col justify-between font-sans page-break-after mb-8"
-                  style={{ minHeight: '660px', boxSizing: 'border-box' }}
+                  className="f4-landscape-page w-[1060px] min-w-[1060px] bg-white text-slate-900 border border-slate-300 shadow-xl rounded-xl p-3 sm:p-4 flex flex-col justify-between font-sans page-break-after mb-8"
+                  style={{ minHeight: '680px', boxSizing: 'border-box' }}
                 >
                   <div>
                     {/* Compact Official Header with School Logos */}
@@ -304,15 +348,15 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                     {/* Table Lembar 1 (Rows 1 - 20) */}
                     <div className="mt-1">
                       <table
-                        className="w-full border-collapse border border-slate-900 text-[8px] leading-tight"
+                        className="w-full border-collapse border border-slate-900 text-[8.5px] leading-tight"
                         style={{ tableLayout: 'fixed' }}
                       >
                         <colgroup>
-                          <col style={{ width: '3.5%' }} />
-                          <col style={{ width: '6.5%' }} />
-                          <col style={{ width: '7.5%' }} />
-                          <col style={{ width: '20.5%' }} />
                           <col style={{ width: '3%' }} />
+                          <col style={{ width: '5%' }} />
+                          <col style={{ width: '6.5%' }} />
+                          <col style={{ width: '24%' }} />
+                          <col style={{ width: '2.5%' }} />
                           {dateCols.map((d) => (
                             <col key={`col-d1-${d}`} style={{ width: '1.55%' }} />
                           ))}
@@ -322,32 +366,47 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                           <col style={{ width: '2.85%' }} />
                         </colgroup>
                         <thead>
-                          <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-center h-[20px]">
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NO.</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NIS</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NISN</th>
-                            <th rowSpan={2} className="border border-slate-900 px-1 py-0.5 text-left align-middle font-bold text-[8px]">NAMA PESERTA DIDIK</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">JK</th>
-                            <th colSpan={31} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">
+                          <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-center h-[22px]">
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NO.</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NIS</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NISN</th>
+                            <th className="border border-slate-900 px-1.5 py-1 text-left align-middle font-bold text-[8.5px] bg-slate-100">NAMA PESERTA DIDIK</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">JK</th>
+                            <th colSpan={31} className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8.5px] bg-slate-100">
                               TANGGAL BULAN {filterBulan.toUpperCase()}
                             </th>
-                            <th colSpan={4} className="border border-slate-900 px-0.5 py-0.5 text-center bg-slate-200 align-middle font-bold text-[8px]">
+                            <th colSpan={4} className="border border-slate-900 px-0.5 py-1 text-center bg-slate-200 align-middle font-bold text-[8px]">
                               REKAP
                             </th>
                           </tr>
-                          <tr className="bg-slate-50 font-bold text-slate-900 text-center text-[7px] h-[16px]">
-                            {dateCols.map((d) => (
-                              <th
-                                key={d}
-                                className={`border border-slate-900 ${d > daysCount ? 'bg-slate-200 text-slate-400' : ''}`}
-                              >
-                                {d}
-                              </th>
-                            ))}
-                            <th className="border border-slate-900 bg-amber-50">S</th>
-                            <th className="border border-slate-900 bg-blue-50">I</th>
-                            <th className="border border-slate-900 bg-rose-50">A</th>
-                            <th className="border border-slate-900 bg-slate-200">Jml</th>
+                          <tr className="bg-slate-50 font-bold text-slate-900 text-center text-[7.5px] h-[18px]">
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(1)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(2)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(3)</th>
+                            <th className="border border-slate-900 px-1.5 py-0.5 text-left align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(4)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(5)</th>
+                            {dateCols.map((d) => {
+                              const sun = isSunday(d);
+                              const inactive = d > daysCount;
+                              return (
+                                <th
+                                  key={d}
+                                  className={`border border-slate-900 px-0 py-0.5 text-center align-middle ${
+                                    inactive
+                                      ? 'bg-slate-200 text-slate-400 font-medium'
+                                      : sun
+                                        ? 'bg-rose-100 text-rose-700 font-extrabold'
+                                        : 'text-slate-800'
+                                  }`}
+                                >
+                                  {d}
+                                </th>
+                              );
+                            })}
+                            <th className="border border-slate-900 bg-amber-100 text-amber-950 font-bold text-center align-middle">S</th>
+                            <th className="border border-slate-900 bg-blue-100 text-blue-950 font-bold text-center align-middle">I</th>
+                            <th className="border border-slate-900 bg-rose-100 text-rose-950 font-bold text-center align-middle">A</th>
+                            <th className="border border-slate-900 bg-slate-200 text-slate-950 font-extrabold text-center align-middle">Jml</th>
                           </tr>
                         </thead>
                         <tbody className="font-medium text-slate-900">
@@ -355,22 +414,32 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                             const s = p1Students[idx];
                             if (s) {
                               return (
-                                <tr key={s.id || idx} className="h-[19px] hover:bg-slate-50">
-                                  <td className="border border-slate-900 text-center align-middle font-bold text-[8px] px-0.5 py-[1px]">{idx + 1}</td>
-                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-[1px]">{s.nis || '-'}</td>
-                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-[1px]">{s.nisn || '-'}</td>
-                                  <td className="border border-slate-900 text-left align-middle font-bold uppercase text-[8px] px-1 py-[1px] truncate">{s.nama}</td>
-                                  <td className={`border border-slate-900 text-center align-middle font-bold text-[8px] py-[1px] ${s.gender === 'L' ? 'text-blue-900' : 'text-pink-900'}`}>
+                                <tr key={s.id || idx} className="h-[21px] hover:bg-slate-50">
+                                  <td className="border border-slate-900 text-center align-middle font-bold text-[8px] px-0.5 py-0">{idx + 1}</td>
+                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-0 tracking-tight">{s.nis || '-'}</td>
+                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-0 tracking-tight">{s.nisn || '-'}</td>
+                                  <td className="border border-slate-900 text-left align-middle px-1.5 py-0">
+                                    <div className="uppercase font-bold text-[8.5px] leading-tight break-words text-slate-900">
+                                      {s.nama}
+                                    </div>
+                                  </td>
+                                  <td className={`border border-slate-900 text-center align-middle font-bold text-[8px] py-0 ${s.gender === 'L' ? 'text-blue-900' : 'text-pink-900'}`}>
                                     {s.gender}
                                   </td>
-                                  {dateCols.map((d) => (
-                                    <td
-                                      key={d}
-                                      className={`border border-slate-900 text-center align-middle ${d > daysCount ? 'bg-slate-100' : ''}`}
-                                    >
-                                      &nbsp;
-                                    </td>
-                                  ))}
+                                  {dateCols.map((d) => {
+                                    const sun = isSunday(d);
+                                    const inactive = d > daysCount;
+                                    return (
+                                      <td
+                                        key={d}
+                                        className={`border border-slate-900 text-center align-middle p-0 ${
+                                          inactive ? 'bg-slate-200' : sun ? 'bg-rose-50' : ''
+                                        }`}
+                                      >
+                                        {sun ? <span className="text-[6.5px] text-rose-400 font-bold">M</span> : <span>&nbsp;</span>}
+                                      </td>
+                                    );
+                                  })}
                                   <td className="border border-slate-900 bg-amber-50 text-center">&nbsp;</td>
                                   <td className="border border-slate-900 bg-blue-50 text-center">&nbsp;</td>
                                   <td className="border border-slate-900 bg-rose-50 text-center">&nbsp;</td>
@@ -379,20 +448,26 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                               );
                             }
                             return (
-                              <tr key={`empty-p1-${idx}`} className="h-[19px]">
-                                <td className="border border-slate-900 text-center align-middle font-bold text-slate-400 text-[8px] px-0.5 py-[1px]">{idx + 1}</td>
-                                <td className="border border-slate-900 text-center align-middle py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 text-center align-middle py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 py-[1px]">&nbsp;</td>
-                                {dateCols.map((d) => (
-                                  <td
-                                    key={d}
-                                    className={`border border-slate-900 ${d > daysCount ? 'bg-slate-100' : ''}`}
-                                  >
-                                    &nbsp;
-                                  </td>
-                                ))}
+                              <tr key={`empty-p1-${idx}`} className="h-[21px]">
+                                <td className="border border-slate-900 text-center align-middle font-bold text-slate-400 text-[8px] px-0.5 py-0">{idx + 1}</td>
+                                <td className="border border-slate-900 text-center align-middle py-0">&nbsp;</td>
+                                <td className="border border-slate-900 text-center align-middle py-0">&nbsp;</td>
+                                <td className="border border-slate-900 py-0">&nbsp;</td>
+                                <td className="border border-slate-900 py-0">&nbsp;</td>
+                                {dateCols.map((d) => {
+                                  const sun = isSunday(d);
+                                  const inactive = d > daysCount;
+                                  return (
+                                    <td
+                                      key={d}
+                                      className={`border border-slate-900 text-center align-middle p-0 ${
+                                        inactive ? 'bg-slate-200' : sun ? 'bg-rose-50' : ''
+                                      }`}
+                                    >
+                                      {sun ? <span className="text-[6.5px] text-rose-400 font-bold">M</span> : <span>&nbsp;</span>}
+                                    </td>
+                                  );
+                                })}
                                 <td className="border border-slate-900 bg-amber-50">&nbsp;</td>
                                 <td className="border border-slate-900 bg-blue-50">&nbsp;</td>
                                 <td className="border border-slate-900 bg-rose-50">&nbsp;</td>
@@ -414,10 +489,10 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
 
                 {/* ==================== LEMBAR 2 (BARIS 21 - 36 + STATISTIK & TANDA TANGAN) ==================== */}
                 <div
-                  className={`f4-landscape-page w-full max-w-[1080px] bg-white text-slate-900 border border-slate-300 shadow-xl rounded-xl p-3 sm:p-4 flex flex-col justify-between font-sans ${
+                  className={`f4-landscape-page w-[1060px] min-w-[1060px] bg-white text-slate-900 border border-slate-300 shadow-xl rounded-xl p-3 sm:p-4 flex flex-col justify-between font-sans ${
                     !isLastClass ? 'page-break-after mb-8' : ''
                   }`}
-                  style={{ minHeight: '660px', boxSizing: 'border-box' }}
+                  style={{ minHeight: '680px', boxSizing: 'border-box' }}
                 >
                   <div>
                     {/* Header Lembar 2 Lanjutan */}
@@ -443,15 +518,15 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                     {/* Table Lembar 2 (Rows 21 - 36: 16 Rows) */}
                     <div className="mt-1">
                       <table
-                        className="w-full border-collapse border border-slate-900 text-[8px] leading-tight"
+                        className="w-full border-collapse border border-slate-900 text-[8.5px] leading-tight"
                         style={{ tableLayout: 'fixed' }}
                       >
                         <colgroup>
-                          <col style={{ width: '3.5%' }} />
-                          <col style={{ width: '6.5%' }} />
-                          <col style={{ width: '7.5%' }} />
-                          <col style={{ width: '20.5%' }} />
                           <col style={{ width: '3%' }} />
+                          <col style={{ width: '5%' }} />
+                          <col style={{ width: '6.5%' }} />
+                          <col style={{ width: '24%' }} />
+                          <col style={{ width: '2.5%' }} />
                           {dateCols.map((d) => (
                             <col key={`col-d2-${d}`} style={{ width: '1.55%' }} />
                           ))}
@@ -461,32 +536,47 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                           <col style={{ width: '2.85%' }} />
                         </colgroup>
                         <thead>
-                          <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-center h-[20px]">
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NO.</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NIS</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">NISN</th>
-                            <th rowSpan={2} className="border border-slate-900 px-1 py-0.5 text-left align-middle font-bold text-[8px]">NAMA PESERTA DIDIK</th>
-                            <th rowSpan={2} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">JK</th>
-                            <th colSpan={31} className="border border-slate-900 px-0.5 py-0.5 text-center align-middle font-bold text-[8px]">
+                          <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-center h-[22px]">
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NO.</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NIS</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">NISN</th>
+                            <th className="border border-slate-900 px-1.5 py-1 text-left align-middle font-bold text-[8.5px] bg-slate-100">NAMA PESERTA DIDIK</th>
+                            <th className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8px] bg-slate-100">JK</th>
+                            <th colSpan={31} className="border border-slate-900 px-0.5 py-1 text-center align-middle font-bold text-[8.5px] bg-slate-100">
                               TANGGAL BULAN {filterBulan.toUpperCase()}
                             </th>
-                            <th colSpan={4} className="border border-slate-900 px-0.5 py-0.5 text-center bg-slate-200 align-middle font-bold text-[8px]">
+                            <th colSpan={4} className="border border-slate-900 px-0.5 py-1 text-center bg-slate-200 align-middle font-bold text-[8px]">
                               REKAP
                             </th>
                           </tr>
-                          <tr className="bg-slate-50 font-bold text-slate-900 text-center text-[7px] h-[16px]">
-                            {dateCols.map((d) => (
-                              <th
-                                key={d}
-                                className={`border border-slate-900 ${d > daysCount ? 'bg-slate-200 text-slate-400' : ''}`}
-                              >
-                                {d}
-                              </th>
-                            ))}
-                            <th className="border border-slate-900 bg-amber-50">S</th>
-                            <th className="border border-slate-900 bg-blue-50">I</th>
-                            <th className="border border-slate-900 bg-rose-50">A</th>
-                            <th className="border border-slate-900 bg-slate-200">Jml</th>
+                          <tr className="bg-slate-50 font-bold text-slate-900 text-center text-[7.5px] h-[18px]">
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(1)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(2)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(3)</th>
+                            <th className="border border-slate-900 px-1.5 py-0.5 text-left align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(4)</th>
+                            <th className="border border-slate-900 px-0.5 py-0.5 text-center align-middle text-[7px] text-slate-600 font-semibold bg-slate-100">(5)</th>
+                            {dateCols.map((d) => {
+                              const sun = isSunday(d);
+                              const inactive = d > daysCount;
+                              return (
+                                <th
+                                  key={d}
+                                  className={`border border-slate-900 px-0 py-0.5 text-center align-middle ${
+                                    inactive
+                                      ? 'bg-slate-200 text-slate-400 font-medium'
+                                      : sun
+                                        ? 'bg-rose-100 text-rose-700 font-extrabold'
+                                        : 'text-slate-800'
+                                  }`}
+                                >
+                                  {d}
+                                </th>
+                              );
+                            })}
+                            <th className="border border-slate-900 bg-amber-100 text-amber-950 font-bold text-center align-middle">S</th>
+                            <th className="border border-slate-900 bg-blue-100 text-blue-950 font-bold text-center align-middle">I</th>
+                            <th className="border border-slate-900 bg-rose-100 text-rose-950 font-bold text-center align-middle">A</th>
+                            <th className="border border-slate-900 bg-slate-200 text-slate-950 font-extrabold text-center align-middle">Jml</th>
                           </tr>
                         </thead>
                         <tbody className="font-medium text-slate-900">
@@ -495,22 +585,32 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                             const s = p2Students[idx];
                             if (s) {
                               return (
-                                <tr key={s.id || rowNum} className="h-[19px] hover:bg-slate-50">
-                                  <td className="border border-slate-900 text-center align-middle font-bold text-[8px] px-0.5 py-[1px]">{rowNum}</td>
-                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-[1px]">{s.nis || '-'}</td>
-                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-[1px]">{s.nisn || '-'}</td>
-                                  <td className="border border-slate-900 text-left align-middle font-bold uppercase text-[8px] px-1 py-[1px] truncate">{s.nama}</td>
-                                  <td className={`border border-slate-900 text-center align-middle font-bold text-[8px] py-[1px] ${s.gender === 'L' ? 'text-blue-900' : 'text-pink-900'}`}>
+                                <tr key={s.id || rowNum} className="h-[21px] hover:bg-slate-50">
+                                  <td className="border border-slate-900 text-center align-middle font-bold text-[8px] px-0.5 py-0">{rowNum}</td>
+                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-0 tracking-tight">{s.nis || '-'}</td>
+                                  <td className="border border-slate-900 text-center align-middle font-mono text-[7.5px] px-0.5 py-0 tracking-tight">{s.nisn || '-'}</td>
+                                  <td className="border border-slate-900 text-left align-middle px-1.5 py-0">
+                                    <div className="uppercase font-bold text-[8.5px] leading-tight break-words text-slate-900">
+                                      {s.nama}
+                                    </div>
+                                  </td>
+                                  <td className={`border border-slate-900 text-center align-middle font-bold text-[8px] py-0 ${s.gender === 'L' ? 'text-blue-900' : 'text-pink-900'}`}>
                                     {s.gender}
                                   </td>
-                                  {dateCols.map((d) => (
-                                    <td
-                                      key={d}
-                                      className={`border border-slate-900 text-center align-middle ${d > daysCount ? 'bg-slate-100' : ''}`}
-                                    >
-                                      &nbsp;
-                                    </td>
-                                  ))}
+                                  {dateCols.map((d) => {
+                                    const sun = isSunday(d);
+                                    const inactive = d > daysCount;
+                                    return (
+                                      <td
+                                        key={d}
+                                        className={`border border-slate-900 text-center align-middle p-0 ${
+                                          inactive ? 'bg-slate-200' : sun ? 'bg-rose-50' : ''
+                                        }`}
+                                      >
+                                        {sun ? <span className="text-[6.5px] text-rose-400 font-bold">M</span> : <span>&nbsp;</span>}
+                                      </td>
+                                    );
+                                  })}
                                   <td className="border border-slate-900 bg-amber-50 text-center">&nbsp;</td>
                                   <td className="border border-slate-900 bg-blue-50 text-center">&nbsp;</td>
                                   <td className="border border-slate-900 bg-rose-50 text-center">&nbsp;</td>
@@ -519,20 +619,26 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                               );
                             }
                             return (
-                              <tr key={`empty-p2-${idx}`} className="h-[19px]">
-                                <td className="border border-slate-900 text-center align-middle font-bold text-slate-400 text-[8px] px-0.5 py-[1px]">{rowNum}</td>
-                                <td className="border border-slate-900 text-center align-middle py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 text-center align-middle py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 py-[1px]">&nbsp;</td>
-                                <td className="border border-slate-900 py-[1px]">&nbsp;</td>
-                                {dateCols.map((d) => (
-                                  <td
-                                    key={d}
-                                    className={`border border-slate-900 ${d > daysCount ? 'bg-slate-100' : ''}`}
-                                  >
-                                    &nbsp;
-                                  </td>
-                                ))}
+                              <tr key={`empty-p2-${idx}`} className="h-[21px]">
+                                <td className="border border-slate-900 text-center align-middle font-bold text-slate-400 text-[8px] px-0.5 py-0">{rowNum}</td>
+                                <td className="border border-slate-900 text-center align-middle py-0">&nbsp;</td>
+                                <td className="border border-slate-900 text-center align-middle py-0">&nbsp;</td>
+                                <td className="border border-slate-900 py-0">&nbsp;</td>
+                                <td className="border border-slate-900 py-0">&nbsp;</td>
+                                {dateCols.map((d) => {
+                                  const sun = isSunday(d);
+                                  const inactive = d > daysCount;
+                                  return (
+                                    <td
+                                      key={d}
+                                      className={`border border-slate-900 text-center align-middle p-0 ${
+                                        inactive ? 'bg-slate-200' : sun ? 'bg-rose-50' : ''
+                                      }`}
+                                    >
+                                      {sun ? <span className="text-[6.5px] text-rose-400 font-bold">M</span> : <span>&nbsp;</span>}
+                                    </td>
+                                  );
+                                })}
                                 <td className="border border-slate-900 bg-amber-50">&nbsp;</td>
                                 <td className="border border-slate-900 bg-blue-50">&nbsp;</td>
                                 <td className="border border-slate-900 bg-rose-50">&nbsp;</td>
@@ -545,20 +651,20 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                     </div>
 
                     {/* Attendance Formulas & Dual Signatures Block */}
-                    <div className="mt-1.5 text-[8.5px] text-slate-900 space-y-1.5">
+                    <div className="mt-2 text-[8.5px] text-slate-900 space-y-1.5">
                       {/* Row 1: Catatan Persentase Ketidakhadiran */}
-                      <div className="flex items-center justify-between border border-slate-300 rounded px-2.5 py-0.5 bg-slate-50 font-semibold text-[8.5px]">
+                      <div className="flex items-center justify-between border border-slate-300 rounded px-3 py-1 bg-slate-50 font-semibold text-[8.5px]">
                         <div>Catatan Sakit (S) : ................. %</div>
                         <div>Ijin (I) : ................. %</div>
                         <div>Alpa (A) : ................. %</div>
-                        <div className="text-slate-500 font-normal">Hari Efektif Belajar : 24 Hari</div>
+                        <div className="text-slate-600 font-medium">Hari Efektif Belajar : 24 Hari</div>
                       </div>
 
                       {/* Row 2: Formula & Dual Signatures */}
-                      <div className="grid grid-cols-12 gap-2.5 items-start">
+                      <div className="grid grid-cols-12 gap-3 items-stretch">
                         {/* Left: Rumus Kehadiran & Rekap L/P */}
-                        <div className="col-span-6 space-y-1">
-                          <div className="flex items-center gap-1.5 border border-slate-200 rounded p-1 bg-white">
+                        <div className="col-span-6 flex flex-col justify-between space-y-1.5">
+                          <div className="flex items-center gap-2 border border-slate-200 rounded p-1.5 bg-white">
                             <span className="font-bold text-[9px] text-blue-900">% Kehadiran</span>
                             <span className="font-bold">=</span>
                             <div className="inline-flex flex-col items-center text-center">
@@ -572,7 +678,7 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                             <span className="font-bold text-[9px]">= .......... %</span>
                           </div>
 
-                          <div className="flex items-center gap-3 text-[9px] px-2 py-0.5 bg-slate-50 rounded border border-slate-200 font-semibold">
+                          <div className="flex items-center gap-3 text-[9px] px-2.5 py-1 bg-slate-50 rounded border border-slate-200 font-semibold">
                             <span>Rekap Siswa:</span>
                             <span className="text-blue-900">L = <strong className="font-bold">{countL}</strong></span>
                             <span className="text-pink-900">P = <strong className="font-bold">{countP}</strong></span>
@@ -583,7 +689,7 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                         {/* Right: Dual Signatures (Kepala Sekolah & Wali Kelas) */}
                         <div className="col-span-6 grid grid-cols-2 gap-2 text-center">
                           {/* Kepala Sekolah */}
-                          <div className="flex flex-col justify-between h-[76px] border border-slate-200 rounded p-1 bg-white">
+                          <div className="flex flex-col justify-between min-h-[82px] border border-slate-200 rounded p-1.5 bg-white">
                             <p className="font-bold text-[8.5px] leading-tight">
                               Mengetahui,<br />Kepala {school.name || 'Sekolah'}
                             </p>
@@ -605,7 +711,7 @@ export const DaftarAbsenView: React.FC<DaftarAbsenViewProps> = ({
                           </div>
 
                           {/* Wali Kelas */}
-                          <div className="flex flex-col justify-between h-[76px] border border-slate-200 rounded p-1 bg-white">
+                          <div className="flex flex-col justify-between min-h-[82px] border border-slate-200 rounded p-1.5 bg-white">
                             <p className="font-bold text-[8.5px] leading-tight">
                               {dateSignatureText}<br />Wali Kelas {rombel}
                             </p>

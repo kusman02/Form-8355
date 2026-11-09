@@ -3,6 +3,7 @@ import { Student, SchoolProfile, Officials, LogoConfig } from '../types';
 import { KopSurat } from '../components/KopSurat';
 import { Filter, Printer } from 'lucide-react';
 import { downloadElementAsPDF } from '../utils/pdfExport';
+import { formatSignatureDate } from '../utils/electronBridge';
 
 interface Form8355CetakViewProps {
   students: Student[];
@@ -277,7 +278,7 @@ export const Form8355CetakView: React.FC<Form8355CetakViewProps> = ({
                 </div>
 
                 <div className="text-center space-y-1">
-                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+                  <p>{formatSignatureDate(school.tempat, school.tanggal)}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
                   <div className="h-12 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (

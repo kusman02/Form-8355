@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { Calendar, Save, Plus, CheckCircle2, FileText, Users, Clock, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { SchoolProfile, Officials } from '../types';
+import { Calendar, Save, Plus, CheckCircle2, FileText, Users, Clock, ArrowRight, ShieldCheck, Sparkles, MapPin, Laptop, Check } from 'lucide-react';
+import { isElectronApp, setStoredTahunAjaran, setStoredSignatureLocationDate, formatSignatureDate } from '../utils/electronBridge';
 
 interface TahunAjaranViewProps {
   tahunAjaran: string;
   onSaveTahunAjaran: (newYear: string) => void;
+  school?: SchoolProfile;
+  officials?: Officials;
+  onSaveSchool?: (updated: SchoolProfile) => void;
   showToast: (msg: string) => void;
 }
 
@@ -20,6 +25,9 @@ const DEFAULT_YEARS = [
 export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
   tahunAjaran,
   onSaveTahunAjaran,
+  school,
+  officials,
+  onSaveSchool,
   showToast
 }) => {
   // Available list of years in storage
@@ -29,7 +37,6 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure current year is in list
           if (!parsed.includes(tahunAjaran)) parsed.push(tahunAjaran);
           return parsed;
         }
@@ -46,18 +53,50 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
   const [customYear, setCustomYear] = useState<string>('');
   const [isAddingCustom, setIsAddingCustom] = useState<boolean>(false);
 
+  // Titimangsa (Tempat dan Tanggal Sebelum Tanda Tangan)
+  const [tempat, setTempat] = useState<string>(school?.tempat || 'Jakarta');
+  const [tanggal, setTanggal] = useState<string>(school?.tanggal || '30 Oktober 2026');
+
+  const isDesktop = isElectronApp();
+
   const handleSelectYear = (year: string) => {
     setSelectedYear(year);
   };
 
-  const handleSaveActiveYear = (e?: React.FormEvent) => {
+  const handleSetCurrentDate = () => {
+    const today = new Date();
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const formatted = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
+    setTanggal(formatted);
+    showToast(`Tanggal diatur ke hari ini: ${formatted}`);
+  };
+
+  const handleSaveAll = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!selectedYear.trim()) {
+    const cleanYear = selectedYear.trim();
+    if (!cleanYear) {
       showToast("Pilih atau masukkan tahun ajaran terlebih dahulu.");
       return;
     }
-    onSaveTahunAjaran(selectedYear.trim());
-    showToast(`Tahun Ajaran aktif berhasil disimpan: ${selectedYear.trim()}`);
+
+    // 1. Save Tahun Ajaran to App state and persistent storage
+    onSaveTahunAjaran(cleanYear);
+    setStoredTahunAjaran(cleanYear);
+
+    // 2. Save Tempat & Tanggal to School Profile and persistent storage
+    setStoredSignatureLocationDate(tempat.trim(), tanggal.trim());
+    if (onSaveSchool && school) {
+      onSaveSchool({
+        ...school,
+        tempat: tempat.trim(),
+        tanggal: tanggal.trim()
+      });
+    }
+
+    showToast(`Tahun Ajaran (${cleanYear}) & Titimangsa (${tempat}, ${tanggal}) berhasil disimpan!`);
   };
 
   const handleAddCustomYear = (e: React.FormEvent) => {
@@ -96,24 +135,31 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-800 dark:text-white">
-                Pengaturan Tahun Ajaran / Pelajaran
+                Pengaturan Tahun Ajaran & Titimangsa Pengesahan
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tentukan tahun pelajaran aktif yang berlaku untuk seluruh buku induk, cetak formulir, absensi, dan data mutasi
+                Atur tahun pelajaran serta tempat & tanggal sebelum tanda tangan yang terhubung ke seluruh dokumen resmi (Web & Desktop Electron)
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Electron Status Badge */}
+            <span className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900/50 rounded-full text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <Laptop className="w-3.5 h-3.5" />
+              <span>{isDesktop ? 'Mode Desktop (Electron)' : 'Kompatibel Desktop (Electron) & Web'}</span>
+            </span>
+
             <span className="px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/50 rounded-full text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Aktif Saat Ini: <strong>{tahunAjaran}</strong></span>
+              <span>T.A Aktif: <strong>{tahunAjaran}</strong></span>
             </span>
           </div>
         </div>
 
-        {/* Current Active Highlight Box */}
+        {/* 1. SELEKSI TAHUN AJARAN */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Active Highlight Box */}
           <div className="md:col-span-1 p-5 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-500/20 flex flex-col justify-between">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -126,23 +172,23 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
                 {selectedYear}
               </div>
               <p className="text-xs text-blue-100/90 pt-1">
-                {selectedYear === tahunAjaran ? 'Sedang aktif di seluruh sistem' : 'Perubahan belum disimpan'}
+                {selectedYear === tahunAjaran ? 'Sedang aktif di seluruh sistem' : 'Perubahan siap diterapkan'}
               </p>
             </div>
 
             <div className="pt-4 mt-4 border-t border-blue-400/30">
               <button
                 type="button"
-                onClick={() => handleSaveActiveYear()}
-                disabled={selectedYear === tahunAjaran}
-                className="w-full py-2 px-3 bg-white hover:bg-blue-50 text-blue-900 font-bold text-xs rounded-xl shadow transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => handleSaveAll()}
+                className="w-full py-2 px-3 bg-white hover:bg-blue-50 text-blue-900 font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>{selectedYear === tahunAjaran ? 'Sudah Aktif' : 'Terapkan Tahun Ajaran Ini'}</span>
+                <span>Simpan & Terapkan Semua</span>
               </button>
             </div>
           </div>
 
+          {/* Grid Selection */}
           <div className="md:col-span-2 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -159,14 +205,14 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
                       onClick={() => handleSelectYear(year)}
                       className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center gap-0.5 border cursor-pointer ${
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25 ring-2 ring-blue-500/20'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-400'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600'
                       }`}
                     >
-                      <span className="text-[13px]">{year}</span>
+                      <span className="text-xs">{year}</span>
                       {isCurrentActive && (
-                        <span className={`text-[9px] font-semibold ${isSelected ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400'}`}>
-                          &bull; Aktif
+                        <span className={`text-[9px] font-semibold ${isSelected ? 'text-blue-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          (Aktif Saat Ini)
                         </span>
                       )}
                     </button>
@@ -175,24 +221,24 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
               </div>
             </div>
 
-            {/* Quick Add Custom Year */}
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Tambah Tahun Ajaran Manual */}
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               {!isAddingCustom ? (
                 <button
                   type="button"
                   onClick={() => setIsAddingCustom(true)}
-                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer self-start"
+                  className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Tambah Tahun Ajaran Baru...
+                  <Plus className="w-3.5 h-3.5" /> Tambah Tahun Ajaran Lain
                 </button>
               ) : (
-                <form onSubmit={handleAddCustomYear} className="flex items-center gap-2 w-full">
+                <form onSubmit={handleAddCustomYear} className="flex items-center gap-2 w-full sm:w-auto">
                   <input
                     type="text"
                     value={customYear}
                     onChange={(e) => setCustomYear(e.target.value)}
                     placeholder="Contoh: 2030/2031"
-                    className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 w-36"
                     autoFocus
                   />
                   <button
@@ -214,42 +260,155 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
           </div>
         </div>
 
-        {/* Affected Documents Section */}
-        <div className="pt-2">
+        {/* 2. TITIMANGSA PENGESAHAN (TEMPAT & TANGGAL SEBELUM TANDA TANGAN) */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-amber-500" />
+            <div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">
+                Titimangsa Pengesahan (Tempat & Tanggal Sebelum Tanda Tangan)
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Teks tempat dan tanggal ini akan otomatis dicetak tepat di atas blok tanda tangan pada seluruh dokumen resmi sekolah
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+            {/* Input Form Column */}
+            <div className="md:col-span-7 space-y-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tempat / Kota (Sebelum Tanda Tangan)
+                </label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={tempat}
+                    onChange={(e) => setTempat(e.target.value)}
+                    placeholder="Contoh: Jakarta"
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 italic">
+                  Contoh: Jakarta, Bandung, Surabaya, Semarang, dsb.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Tanggal Surat / Pengesahan (Sebelum Tanda Tangan)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSetCurrentDate}
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Clock className="w-3 h-3" /> Pakai Tanggal Hari Ini
+                  </button>
+                </div>
+                <div className="relative">
+                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={tanggal}
+                    onChange={(e) => setTanggal(e.target.value)}
+                    placeholder="Contoh: 30 Oktober 2026"
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 italic">
+                  Contoh: 30 Oktober 2026, 31 Juli 2026, 15 Januari 2027
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSaveAll()}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Simpan Perubahan Titimangsa & Tahun Ajaran</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Live Signature Preview Column */}
+            <div className="md:col-span-5 p-5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-3">
+                  Pratinjau Hasil Cetak Pengesahan Dokumen
+                </span>
+                <div className="text-center font-sans space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {formatSignatureDate(tempat, tanggal)}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Kepala {school?.name || 'Sekolah'}
+                  </p>
+                  <div className="h-14 flex items-center justify-center py-1">
+                    {officials?.kepsekTtdUrl ? (
+                      <img src={officials.kepsekTtdUrl} alt="TTD Kepsek" className="max-h-12 object-contain" />
+                    ) : (
+                      <span className="text-[11px] text-slate-400 italic">(Ruang Tanda Tangan & Stempel)</span>
+                    )}
+                  </div>
+                  <p className="text-xs font-bold underline uppercase text-slate-900 dark:text-white">
+                    {officials?.kepsekName || 'Drs. H. Sukirman, M.Pd.'}
+                  </p>
+                  <p className="text-[10.5px] font-mono text-slate-600 dark:text-slate-400">
+                    NIP. {officials?.kepsekNip || '196508121990031004'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Otomatis diterapkan di Form 8355, Daftar Absen, Daftar Siswa, dan Rekapitulasi</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. DOKUMEN YANG TERHUBUNG */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-slate-400" />
-            <span>Dokumen & Laporan Yang Terhubung dengan Tahun Ajaran Ini:</span>
+            <span>Dokumen & Laporan Yang Terhubung:</span>
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               {
                 title: 'Buku Induk Form 8355',
-                desc: 'Tercetak di header atas dan ringkasan rekapitulasi siswa semester aktif.',
+                desc: 'Tercetak di header atas dan ringkasan rekapitulasi semester aktif.',
                 icon: FileText
               },
               {
                 title: 'Daftar Hadir / Absensi Siswa',
-                desc: 'Tercetak di kop surat resmi Lembar 1 dan header lanjutan Lembar 2.',
+                desc: 'Tercetak di kop surat Lembar 1 dan titimangsa tanda tangan Lembar 2.',
                 icon: Clock
               },
               {
                 title: 'Daftar Peserta Didik per Kelas',
-                desc: 'Tercetak di bawah judul dokumen serta pada file ekspor Excel.',
+                desc: 'Tercetak di bawah judul dokumen, titimangsa, dan file ekspor Excel.',
                 icon: Users
               },
               {
                 title: 'Rekapitulasi L/P Siswa',
-                desc: 'Menjadi acuan periode statistik data pokok rombongan belajar.',
+                desc: 'Menjadi acuan periode statistik data pokok rombel serta titimangsa tanda tangan.',
                 icon: ShieldCheck
               },
               {
                 title: 'Daftar Mutasi Siswa',
-                desc: 'Menjadi filter tahun kalender pergerakan siswa masuk dan keluar.',
+                desc: 'Menjadi filter tahun kalender mutasi serta titimangsa tanda tangan rekapitulasi.',
                 icon: ArrowRight
               },
               {
                 title: 'Kategori Usia Peserta Didik',
-                desc: 'Menentukan perhitungan distribusi umur pada periode tahun ajaran aktif.',
+                desc: 'Menentukan perhitungan distribusi umur serta titimangsa tanda tangan resmi.',
                 icon: Calendar
               }
             ].map((item, idx) => {
@@ -274,6 +433,17 @@ export const TahunAjaranView: React.FC<TahunAjaranViewProps> = ({
               );
             })}
           </div>
+        </div>
+
+        {/* 4. PANDUAN ELECTRON DESKTOP APPLICATION */}
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-2">
+          <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white">
+            <Laptop className="w-4 h-4 text-blue-500" />
+            <span>Informasi Kompatibilitas Electron Desktop</span>
+          </div>
+          <p className="leading-relaxed">
+            Aplikasi ini telah dilengkapi skrip desktop Electron lengkap (<code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px]">electron/main.cjs</code> dan <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px]">electron/preload.cjs</code>). Seluruh pengaturan Tahun Ajaran serta Tempat dan Tanggal disimpan secara permanen di penyimpanan lokal (LocalStorage & IPC) dan dapat langsung dipaketkan menjadi file installer desktop (<code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px]">.exe</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px]">.dmg</code>, atau <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px]">.AppImage</code>) secara offline tanpa memerlukan koneksi internet.
+          </p>
         </div>
       </div>
     </div>

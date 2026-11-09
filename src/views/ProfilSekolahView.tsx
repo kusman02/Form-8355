@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SchoolProfile } from '../types';
 import { School, Save, Trash2, Info, MapPin, Calendar } from 'lucide-react';
+import { setStoredSignatureLocationDate, setStoredTahunAjaran } from '../utils/electronBridge';
 
 interface ProfilSekolahViewProps {
   school: SchoolProfile;
@@ -23,6 +24,7 @@ export const ProfilSekolahView: React.FC<ProfilSekolahViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
+    setStoredSignatureLocationDate(formData.tempat || 'Jakarta', formData.tanggal || '30 Oktober 2026');
     showToast("Profil Sekolah & Header Kop berhasil disimpan!");
   };
 
@@ -159,6 +161,7 @@ export const ProfilSekolahView: React.FC<ProfilSekolahViewProps> = ({
                     const newYear = e.target.value;
                     setCurrentTahunAjaran(newYear);
                     onSaveTahunAjaran(newYear);
+                    setStoredTahunAjaran(newYear);
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-blue-900 dark:text-blue-300 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer"
                 >

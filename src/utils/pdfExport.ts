@@ -285,6 +285,7 @@ export async function downloadElementAsPDF({
           el.style.gap = '0px';
           el.style.margin = '0px';
           el.style.padding = '0px';
+          el.style.transform = 'none';
           if (orientation === 'landscape') {
             el.style.width = '1080px';
             el.style.maxWidth = '1080px';
@@ -298,18 +299,19 @@ export async function downloadElementAsPDF({
           p.style.margin = '0px';
           p.style.marginBottom = '0px';
           p.style.borderRadius = '0px';
+          p.style.transform = 'none';
         });
 
-        // For landscape F4 pages, enforce strict 1080px x 694px dimensions to prevent any page spillover
+        // For landscape F4 pages, ensure full 1080px width, prevent clipping, and let content fit cleanly
         const landscapePages = clonedDoc.querySelectorAll('.f4-landscape-page');
         landscapePages.forEach((page) => {
           const p = page as HTMLElement;
           p.style.width = '1080px';
           p.style.maxWidth = '1080px';
-          p.style.height = '694px';
-          p.style.maxHeight = '694px';
-          p.style.overflow = 'hidden';
+          p.style.minHeight = '680px';
+          p.style.overflow = 'visible';
           p.style.boxSizing = 'border-box';
+          p.style.transform = 'none';
         });
 
         // 1. Sanitize all <style> tags in the cloned document for any unsupported colors
@@ -358,6 +360,18 @@ export async function downloadElementAsPDF({
             --color-amber-600: #d97706 !important;
             --color-white: #ffffff !important;
             --color-black: #000000 !important;
+          }
+          table {
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+          }
+          th, td {
+            box-sizing: border-box !important;
+          }
+          thead th {
+            vertical-align: middle !important;
+            line-height: 1.25 !important;
+            overflow: visible !important;
           }
         `;
         clonedDoc.head.appendChild(overrideStyle);

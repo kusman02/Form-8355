@@ -4,6 +4,7 @@ import { KopSurat } from '../components/KopSurat';
 import { Filter, FileSpreadsheet, Printer, Layers } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { downloadElementAsPDF } from '../utils/pdfExport';
+import { formatSignatureDate } from '../utils/electronBridge';
 
 interface DaftarSiswaViewProps {
   students: Student[];
@@ -282,7 +283,7 @@ export const DaftarSiswaView: React.FC<DaftarSiswaViewProps> = ({
                 {/* Footer Signature Area (Diperkecil dan rapi merapat ke bawah tabel) */}
                 <div className="mt-2 flex justify-end items-start text-xs font-semibold px-4 pt-1">
                   <div className="text-center text-[9px] space-y-0.5 leading-snug">
-                    <p className="text-slate-800">{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+                    <p className="text-slate-800">{formatSignatureDate(school.tempat, school.tanggal)}</p>
                     <p className="font-bold text-slate-900">Wali Kelas {rombel}</p>
                     <div className="h-7 flex items-center justify-center">
                       {/* Space for signature stamp/sign */}

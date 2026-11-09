@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Mutasi, Student, SchoolProfile, Officials, LogoConfig } from '../types';
 import { KopSurat } from '../components/KopSurat';
-import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight, Users, Plus, List, TableProperties, Search, Calendar, Edit2, Trash2, Printer } from 'lucide-react';
+import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight, Users, Plus, List, TableProperties, Search, Calendar, Edit2, Trash2, Printer, FileSpreadsheet, Filter } from 'lucide-react';
 import { downloadElementAsPDF } from '../utils/pdfExport';
+import * as XLSX from 'xlsx';
+import { formatSignatureDate } from '../utils/electronBridge';
 
 interface DaftarMutasiViewProps {
   mutasiList: Mutasi[];
@@ -38,6 +40,8 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
   const [filterJenis, setFilterJenis] = useState('');
   const [filterRombel, setFilterRombel] = useState('');
   const [search, setSearch] = useState('');
+  const [filterRekapBulan, setFilterRekapBulan] = useState<string>('ALL');
+  const [zoomScaleRekap, setZoomScaleRekap] = useState<'100' | '90' | '80'>('100');
 
   const masukCount = mutasiList.filter(m => m.jenis === 'MASUK').length;
   const keluarCount = mutasiList.filter(m => m.jenis === 'KELUAR').length;
@@ -58,23 +62,74 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
     return matchBulan && matchJenis && matchRombel && matchSearch;
   });
 
-  // Rekap Matrix per Rombel for Tab 2
+  const monthsMap: Record<string, string> = {
+    "01": "JANUARI", "02": "FEBRUARI", "03": "MARET", "04": "APRIL",
+    "05": "MEI", "06": "JUNI", "07": "JULI", "08": "AGUSTUS",
+    "09": "SEPTEMBER", "10": "OKTOBER", "11": "NOVEMBER", "12": "DESEMBER"
+  };
+
+  // Rekap Matrix per Rombel for Tab 2 (Dynamic by filterRekapBulan)
   const rekapRows = rombelList.map((r, idx) => {
-    const cleanRombel = r.replace(/^KELAS\s+/i, '');
-    const studentsRombel = students.filter(s => s.rombel.replace(/^KELAS\s+/i, '') === cleanRombel);
-    const akhirL = studentsRombel.filter(s => s.gender === 'L').length;
-    const akhirP = studentsRombel.filter(s => s.gender === 'P').length;
+    const cleanRombel = r.replace(/^KELAS\s+/i, '').trim();
+    const studentsRombel = students.filter(s => s.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel);
+    const currentL = studentsRombel.filter(s => s.gender === 'L').length;
+    const currentP = studentsRombel.filter(s => s.gender === 'P').length;
 
-    const mutMasuk = mutasiList.filter(m => m.rombel.replace(/^KELAS\s+/i, '') === cleanRombel && m.jenis === 'MASUK');
-    const mMasukL = mutMasuk.filter(m => m.gender === 'L').length;
-    const mMasukP = mutMasuk.filter(m => m.gender === 'P').length;
+    let awalL = 0;
+    let awalP = 0;
+    let mMasukL = 0;
+    let mMasukP = 0;
+    let mKeluarL = 0;
+    let mKeluarP = 0;
+    let akhirL = 0;
+    let akhirP = 0;
 
-    const mutKeluar = mutasiList.filter(m => m.rombel.replace(/^KELAS\s+/i, '') === cleanRombel && m.jenis === 'KELUAR');
-    const mKeluarL = mutKeluar.filter(m => m.gender === 'L').length;
-    const mKeluarP = mutKeluar.filter(m => m.gender === 'P').length;
+    if (filterRekapBulan === 'ALL') {
+      const mutMasuk = mutasiList.filter(m => m.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel && m.jenis === 'MASUK');
+      mMasukL = mutMasuk.filter(m => m.gender === 'L').length;
+      mMasukP = mutMasuk.filter(m => m.gender === 'P').length;
 
-    const awalL = akhirL - mMasukL + mKeluarL;
-    const awalP = akhirP - mMasukP + mKeluarP;
+      const mutKeluar = mutasiList.filter(m => m.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel && m.jenis === 'KELUAR');
+      mKeluarL = mutKeluar.filter(m => m.gender === 'L').length;
+      mKeluarP = mutKeluar.filter(m => m.gender === 'P').length;
+
+      akhirL = currentL;
+      akhirP = currentP;
+      awalL = Math.max(0, akhirL - mMasukL + mKeluarL);
+      awalP = Math.max(0, akhirP - mMasukP + mKeluarP);
+    } else {
+      // Filter for specific month
+      const mutMasukMonth = mutasiList.filter(m =>
+        m.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel &&
+        m.jenis === 'MASUK' &&
+        m.tanggal && m.tanggal.split('-')[1] === filterRekapBulan
+      );
+      mMasukL = mutMasukMonth.filter(m => m.gender === 'L').length;
+      mMasukP = mutMasukMonth.filter(m => m.gender === 'P').length;
+
+      const mutKeluarMonth = mutasiList.filter(m =>
+        m.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel &&
+        m.jenis === 'KELUAR' &&
+        m.tanggal && m.tanggal.split('-')[1] === filterRekapBulan
+      );
+      mKeluarL = mutKeluarMonth.filter(m => m.gender === 'L').length;
+      mKeluarP = mutKeluarMonth.filter(m => m.gender === 'P').length;
+
+      // Mutasi occurring after selected month
+      const mutAfter = mutasiList.filter(m =>
+        m.rombel.replace(/^KELAS\s+/i, '').trim() === cleanRombel &&
+        m.tanggal && m.tanggal.split('-')[1] > filterRekapBulan
+      );
+      const mAfterMasukL = mutAfter.filter(m => m.jenis === 'MASUK' && m.gender === 'L').length;
+      const mAfterMasukP = mutAfter.filter(m => m.jenis === 'MASUK' && m.gender === 'P').length;
+      const mAfterKeluarL = mutAfter.filter(m => m.jenis === 'KELUAR' && m.gender === 'L').length;
+      const mAfterKeluarP = mutAfter.filter(m => m.jenis === 'KELUAR' && m.gender === 'P').length;
+
+      akhirL = Math.max(0, currentL - mAfterMasukL + mAfterKeluarL);
+      akhirP = Math.max(0, currentP - mAfterMasukP + mAfterKeluarP);
+      awalL = Math.max(0, akhirL - mMasukL + mKeluarL);
+      awalP = Math.max(0, akhirP - mMasukP + mKeluarP);
+    }
 
     return {
       no: idx + 1,
@@ -103,12 +158,6 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
   const totalAkhirL = rekapRows.reduce((acc, r) => acc + r.akhirL, 0);
   const totalAkhirP = rekapRows.reduce((acc, r) => acc + r.akhirP, 0);
 
-  const monthsMap: Record<string, string> = {
-    "01": "JANUARI", "02": "FEBRUARI", "03": "MARET", "04": "APRIL",
-    "05": "MEI", "06": "JUNI", "07": "JULI", "08": "AGUSTUS",
-    "09": "SEPTEMBER", "10": "OKTOBER", "11": "NOVEMBER", "12": "DESEMBER"
-  };
-
   const handleDownloadDaftarPDF = async () => {
     setIsExportingDaftar(true);
     showToast("Sedang memproses unduhan PDF Daftar Mutasi (F4 Portrait)...");
@@ -128,12 +177,124 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
     showToast("Sedang memproses unduhan PDF Rekapitulasi Mutasi (F4 Landscape)...");
     const success = await downloadElementAsPDF({
       elementId: 'printable-rekapmutasi-area',
-      filename: 'Rekapitulasi_Perhitungan_Mutasi_SMPN18.pdf',
+      filename: `Rekapitulasi_Mutasi_${filterRekapBulan === 'ALL' ? 'Semua_Bulan' : monthsMap[filterRekapBulan]}_SMPN18.pdf`,
       orientation: 'landscape'
     });
     setIsExportingRekap(false);
     if (success) {
       showToast("Dokumen PDF Rekapitulasi Mutasi berhasil diunduh!");
+    }
+  };
+
+  const handleExportRekapExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const monthLabel = filterRekapBulan === 'ALL'
+        ? `SEMUA BULAN / TAHUN PELAJARAN ${tahunAjaran}`
+        : `BULAN ${monthsMap[filterRekapBulan] || ''} 2026 - T.A ${tahunAjaran}`;
+
+      const colAwalTitle = filterRekapBulan === 'ALL' ? 'KEADAAN AWAL' : `AWAL BULAN ${monthsMap[filterRekapBulan] || ''}`;
+      const colAkhirTitle = filterRekapBulan === 'ALL' ? 'KEADAAN AKHIR' : `AKHIR BULAN ${monthsMap[filterRekapBulan] || ''}`;
+
+      const sheetData: (string | number)[][] = [
+        [school.instansiAtas || 'PEMERINTAH PROVINSI DKI JAKARTA'],
+        [school.dinas || 'DINAS PENDIDIKAN'],
+        [school.name || 'SMP NEGERI 18 JAKARTA'],
+        [`${school.address || 'Alamat Sekolah'} | NPSN: ${school.npsn || '-'}`],
+        [""],
+        ["REKAPITULASI PERHITUNGAN JUMLAH MUTASI PESERTA DIDIK"],
+        [`PERIODE : ${monthLabel}`],
+        [""],
+        [
+          "NO", "KELAS",
+          colAwalTitle, "", "",
+          "MUTASI MASUK", "", "",
+          "MUTASI KELUAR", "", "",
+          colAkhirTitle, "", ""
+        ],
+        [
+          "", "",
+          "L", "P", "JML",
+          "L", "P", "JML",
+          "L", "P", "JML",
+          "L", "P", "JML"
+        ]
+      ];
+
+      rekapRows.forEach(row => {
+        sheetData.push([
+          row.no,
+          row.rombel,
+          row.awalL,
+          row.awalP,
+          row.awalJml,
+          row.mMasukL,
+          row.mMasukP,
+          row.mMasukJml,
+          row.mKeluarL,
+          row.mKeluarP,
+          row.mKeluarJml,
+          row.akhirL,
+          row.akhirP,
+          row.akhirJml
+        ]);
+      });
+
+      sheetData.push([
+        "",
+        "TOTAL",
+        totalAwalL,
+        totalAwalP,
+        totalAwalL + totalAwalP,
+        totalMasukL,
+        totalMasukP,
+        totalMasukL + totalMasukP,
+        totalKeluarL,
+        totalKeluarP,
+        totalKeluarL + totalKeluarP,
+        totalAkhirL,
+        totalAkhirP,
+        totalAkhirL + totalAkhirP
+      ]);
+
+      sheetData.push([""]);
+      sheetData.push([""]);
+      sheetData.push([
+        "", "", "", "", "", "", "", "", "", "", "",
+        `${school.tempat || 'Jakarta'}, ${school.tanggal || '30 Oktober 2026'}`
+      ]);
+      sheetData.push([
+        "", "", "", "", "", "", "", "", "", "", "",
+        `Kepala ${school.name || 'Sekolah'}`
+      ]);
+      sheetData.push([""]);
+      sheetData.push([""]);
+      sheetData.push([
+        "", "", "", "", "", "", "", "", "", "", "",
+        officials.kepsekName || '...........................................'
+      ]);
+      sheetData.push([
+        "", "", "", "", "", "", "", "", "", "", "",
+        `NIP. ${officials.kepsekNip || '...........................................'}`
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      ws['!cols'] = [
+        { wch: 6 },
+        { wch: 18 },
+        { wch: 7 }, { wch: 7 }, { wch: 8 },
+        { wch: 7 }, { wch: 7 }, { wch: 8 },
+        { wch: 7 }, { wch: 7 }, { wch: 8 },
+        { wch: 7 }, { wch: 7 }, { wch: 8 }
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap Mutasi");
+      const filename = `Rekapitulasi_Mutasi_${filterRekapBulan === 'ALL' ? 'Semua_Bulan' : monthsMap[filterRekapBulan]}_SMPN18.xlsx`;
+      XLSX.writeFile(wb, filename);
+      showToast("Rekapitulasi Mutasi berhasil diekspor ke Excel!");
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal mengekspor rekapitulasi ke Excel");
     }
   };
 
@@ -411,7 +572,7 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
               {/* Signature Area */}
               <div className="mt-8 flex justify-end items-start text-xs font-semibold px-6">
                 <div className="text-center space-y-1">
-                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+                  <p>{formatSignatureDate(school.tempat, school.tanggal)}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
                   <div className="h-16 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (
@@ -434,7 +595,7 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
       {/* SUB-TAB 2: REKAPITULASI PERHITUNGAN */}
       {subTab === 'rekap' && (
         <div className="space-y-5">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4 no-print">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 flex items-center justify-center">
                 <TableProperties className="w-5 h-5" />
@@ -447,140 +608,249 @@ export const DaftarMutasiView: React.FC<DaftarMutasiViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Month Selector for Rekap */}
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Calendar className="w-4 h-4 text-slate-500" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Bulan:</span>
+                <select
+                  value={filterRekapBulan}
+                  onChange={(e) => setFilterRekapBulan(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 dark:text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Semua Bulan (Kumulatif T.A)</option>
+                  <option value="01">Januari</option>
+                  <option value="02">Februari</option>
+                  <option value="03">Maret</option>
+                  <option value="04">April</option>
+                  <option value="05">Mei</option>
+                  <option value="06">Juni</option>
+                  <option value="07">Juli</option>
+                  <option value="08">Agustus</option>
+                  <option value="09">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
+                </select>
+              </div>
+
+              {/* Zoom Selector for Rekap */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-1.5">Skala:</span>
+                {(['100', '90', '80'] as const).map(scale => (
+                  <button
+                    key={scale}
+                    type="button"
+                    onClick={() => setZoomScaleRekap(scale)}
+                    className={`px-2 py-0.5 text-xs font-bold rounded-lg transition ${
+                      zoomScaleRekap === scale
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    {scale}%
+                  </button>
+                ))}
+              </div>
+
+              {/* Unduh Excel Button */}
+              <button
+                type="button"
+                onClick={handleExportRekapExcel}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2 transition active:scale-95 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Unduh Excel</span>
+              </button>
+
+              {/* Unduh PDF Button */}
               <button
                 type="button"
                 disabled={isExportingRekap}
                 onClick={handleDownloadRekapPDF}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 transition active:scale-95 cursor-pointer disabled:opacity-60"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2 transition active:scale-95 cursor-pointer disabled:opacity-60"
               >
                 <Printer className="w-4 h-4" />
-                <span>{isExportingRekap ? 'Memproses PDF...' : 'Unduh PDF Landscape (F4)'}</span>
+                <span>{isExportingRekap ? 'Memproses PDF...' : 'Unduh PDF (F4)'}</span>
               </button>
             </div>
           </div>
 
           {/* OFFICIAL REKAP F4 LANDSCAPE PREVIEW PAPER */}
-          <div className="flex justify-center my-4 overflow-x-auto">
-            <div id="printable-rekapmutasi-area" className="f4-landscape-page p-6 rounded-xl border border-slate-300 shadow-xl font-sans text-slate-900 bg-white">
+          <div className="flex justify-center my-4 overflow-x-auto w-full pb-6">
+            <div
+              id="printable-rekapmutasi-area"
+              className="f4-landscape-page w-[1040px] min-w-[1040px] p-4 sm:p-5 rounded-xl border border-slate-300 shadow-xl font-sans text-slate-900 bg-white transition-transform origin-top"
+              style={{
+                minHeight: '680px',
+                boxSizing: 'border-box',
+                transform: zoomScaleRekap === '90' ? 'scale(0.9)' : zoomScaleRekap === '80' ? 'scale(0.8)' : 'none',
+                marginBottom: zoomScaleRekap === '90' ? '-80px' : zoomScaleRekap === '80' ? '-160px' : '0px'
+              }}
+            >
               <KopSurat
                 school={school}
                 logos={logos}
                 documentTitle="REKAPITULASI PERHITUNGAN JUMLAH MUTASI PESERTA DIDIK"
-                documentSubtitle={`TAHUN PELAJARAN ${tahunAjaran}`}
+                documentSubtitle={
+                  filterRekapBulan === 'ALL'
+                    ? `SEMUA BULAN / TAHUN PELAJARAN ${tahunAjaran}`
+                    : `BULAN ${monthsMap[filterRekapBulan] || ''} 2026 - TAHUN PELAJARAN ${tahunAjaran}`
+                }
                 compact={true}
               />
 
               {/* Stats Bar */}
               <div className="flex justify-between items-center text-[10px] font-bold mb-2 px-1 text-slate-800 border-b pb-1">
                 <div>Total Siswa Terdata: <span className="text-blue-900 font-extrabold">{students.length} SISWA</span></div>
-                <div>Total Mutasi Masuk: <span className="text-emerald-700 font-extrabold">+{masukCount}</span></div>
-                <div>Total Mutasi Keluar: <span className="text-rose-700 font-extrabold">-{keluarCount}</span></div>
-                <div>Saldo Net: <span className="text-blue-900 font-extrabold">{saldoSelisih >= 0 ? `+${saldoSelisih}` : saldoSelisih}</span></div>
+                <div>Total Mutasi Masuk: <span className="text-emerald-700 font-extrabold">+{totalMasukL + totalMasukP}</span></div>
+                <div>Total Mutasi Keluar: <span className="text-rose-700 font-extrabold">-{totalKeluarL + totalKeluarP}</span></div>
+                <div>Saldo Mutasi: <span className="text-blue-900 font-extrabold">{(totalMasukL + totalMasukP) - (totalKeluarL + totalKeluarP) >= 0 ? `+${(totalMasukL + totalMasukP) - (totalKeluarL + totalKeluarP)}` : (totalMasukL + totalMasukP) - (totalKeluarL + totalKeluarP)}</span></div>
               </div>
 
-              <p className="text-[10px] font-bold text-slate-900 uppercase mb-1">
-                REKAPITULASI PERHITUNGAN MUTASI PER ROMBEL / KELAS (SEMUA BULAN / T.A {tahunAjaran})
+              <p className="text-[10px] font-bold text-slate-900 uppercase mb-1.5">
+                {filterRekapBulan === 'ALL'
+                  ? `REKAPITULASI PERHITUNGAN MUTASI PER ROMBEL / KELAS (SEMUA BULAN / T.A ${tahunAjaran})`
+                  : `REKAPITULASI PERHITUNGAN MUTASI PER ROMBEL / KELAS - BULAN ${monthsMap[filterRekapBulan] || ''} 2026 (T.A ${tahunAjaran})`}
               </p>
 
               {/* Matrix Table */}
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-slate-900 text-[9px] text-center">
+                <table
+                  className="w-full border-collapse border border-slate-900 text-[8.5px] text-center"
+                  style={{ tableLayout: 'fixed' }}
+                >
+                  <colgroup>
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                    <col style={{ width: '6.5%' }} />
+                  </colgroup>
                   <thead>
-                    <tr className="bg-slate-200 font-bold text-slate-900 uppercase border-b border-slate-900">
-                      <th rowSpan={2} className="border border-slate-900 px-2 py-2 w-8">NO</th>
-                      <th rowSpan={2} className="border border-slate-900 px-3 py-2 text-left w-32">KELAS</th>
-                      <th colSpan={3} className="border border-slate-900 px-2 py-1 bg-slate-100">AWAL BULAN</th>
-                      <th colSpan={3} className="border border-slate-900 px-2 py-1 bg-emerald-100 text-emerald-900">MASUK</th>
-                      <th colSpan={3} className="border border-slate-900 px-2 py-1 bg-rose-100 text-rose-900">KELUAR</th>
-                      <th colSpan={3} className="border border-slate-900 px-2 py-1 bg-blue-100 text-blue-900">AKHIR BULAN</th>
+                    <tr className="bg-slate-200 font-bold text-slate-900 uppercase border-b border-slate-900 h-[24px]">
+                      <th className="border border-slate-900 px-1 py-1 text-center align-middle font-bold text-[8.5px] bg-slate-200">NO</th>
+                      <th className="border border-slate-900 px-2 py-1 text-left align-middle font-bold text-[8.5px] bg-slate-200">KELAS</th>
+                      <th colSpan={3} className="border border-slate-900 px-1 py-1 bg-slate-100 text-center align-middle font-bold text-[8.5px]">
+                        {filterRekapBulan === 'ALL' ? 'KEADAAN AWAL' : `AWAL BULAN ${monthsMap[filterRekapBulan] || ''}`}
+                      </th>
+                      <th colSpan={3} className="border border-slate-900 px-1 py-1 bg-emerald-100 text-emerald-950 text-center align-middle font-bold text-[8.5px]">
+                        MUTASI MASUK
+                      </th>
+                      <th colSpan={3} className="border border-slate-900 px-1 py-1 bg-rose-100 text-rose-950 text-center align-middle font-bold text-[8.5px]">
+                        MUTASI KELUAR
+                      </th>
+                      <th colSpan={3} className="border border-slate-900 px-1 py-1 bg-blue-100 text-blue-950 text-center align-middle font-bold text-[8.5px]">
+                        {filterRekapBulan === 'ALL' ? 'KEADAAN AKHIR' : `AKHIR BULAN ${monthsMap[filterRekapBulan] || ''}`}
+                      </th>
                     </tr>
-                    <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-[8px]">
-                      <th className="border border-slate-900 w-12">L</th>
-                      <th className="border border-slate-900 w-12">P</th>
-                      <th className="border border-slate-900 w-14 font-extrabold bg-slate-200">JML</th>
+                    <tr className="bg-slate-100 font-bold text-slate-900 uppercase text-[8px] h-[20px]">
+                      <th className="border border-slate-900 text-center align-middle text-[7.5px] text-slate-600 font-semibold bg-slate-200">(1)</th>
+                      <th className="border border-slate-900 text-left px-2 align-middle text-[7.5px] text-slate-600 font-semibold bg-slate-200">(2)</th>
+                      <th className="border border-slate-900 text-center align-middle font-bold bg-slate-50">L</th>
+                      <th className="border border-slate-900 text-center align-middle font-bold bg-slate-50">P</th>
+                      <th className="border border-slate-900 font-extrabold bg-slate-200 text-center align-middle">JML</th>
 
-                      <th className="border border-slate-900 w-12 text-emerald-900">L</th>
-                      <th className="border border-slate-900 w-12 text-emerald-900">P</th>
-                      <th className="border border-slate-900 w-14 font-extrabold bg-emerald-200 text-emerald-950">JML</th>
+                      <th className="border border-slate-900 text-emerald-950 text-center align-middle font-bold bg-emerald-50">L</th>
+                      <th className="border border-slate-900 text-emerald-950 text-center align-middle font-bold bg-emerald-50">P</th>
+                      <th className="border border-slate-900 font-extrabold bg-emerald-200 text-emerald-950 text-center align-middle">JML</th>
 
-                      <th className="border border-slate-900 w-12 text-rose-900">L</th>
-                      <th className="border border-slate-900 w-12 text-rose-900">P</th>
-                      <th className="border border-slate-900 w-14 font-extrabold bg-rose-200 text-rose-950">JML</th>
+                      <th className="border border-slate-900 text-rose-950 text-center align-middle font-bold bg-rose-50">L</th>
+                      <th className="border border-slate-900 text-rose-950 text-center align-middle font-bold bg-rose-50">P</th>
+                      <th className="border border-slate-900 font-extrabold bg-rose-200 text-rose-950 text-center align-middle">JML</th>
 
-                      <th className="border border-slate-900 w-12 text-blue-900">L</th>
-                      <th className="border border-slate-900 w-12 text-blue-900">P</th>
-                      <th className="border border-slate-900 w-14 font-extrabold bg-blue-200 text-blue-950">JML</th>
+                      <th className="border border-slate-900 text-blue-950 text-center align-middle font-bold bg-blue-50">L</th>
+                      <th className="border border-slate-900 text-blue-950 text-center align-middle font-bold bg-blue-50">P</th>
+                      <th className="border border-slate-900 font-extrabold bg-blue-200 text-blue-950 text-center align-middle">JML</th>
                     </tr>
                   </thead>
                   <tbody className="font-semibold text-slate-900">
                     {rekapRows.map((row) => (
-                      <tr key={row.rombel} className="hover:bg-slate-50 transition">
-                        <td className="border border-slate-900 py-1.5 px-2 text-center font-bold">{row.no}</td>
-                        <td className="border border-slate-900 py-1.5 px-3 text-left font-bold uppercase">{row.rombel}</td>
+                      <tr key={row.rombel} className="h-[24px] hover:bg-slate-50 transition">
+                        <td className="border border-slate-900 py-1 px-1 text-center font-bold text-[8.5px] align-middle">{row.no}</td>
+                        <td className="border border-slate-900 py-1 px-2.5 text-left font-bold uppercase text-[9px] align-middle whitespace-normal break-words">
+                          {row.rombel}
+                        </td>
 
-                        <td className="border border-slate-900 py-1.5 px-2">{row.awalL}</td>
-                        <td className="border border-slate-900 py-1.5 px-2">{row.awalP}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 font-extrabold bg-slate-100">{row.awalJml}</td>
+                        <td className="border border-slate-900 py-1 px-1 align-middle">{row.awalL}</td>
+                        <td className="border border-slate-900 py-1 px-1 align-middle">{row.awalP}</td>
+                        <td className="border border-slate-900 py-1 px-1 font-extrabold bg-slate-100 text-slate-900 align-middle">{row.awalJml}</td>
 
-                        <td className="border border-slate-900 py-1.5 px-2 text-emerald-900">{row.mMasukL}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 text-emerald-900">{row.mMasukP}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 font-extrabold bg-emerald-50 text-emerald-950">
+                        <td className="border border-slate-900 py-1 px-1 text-emerald-900 align-middle">{row.mMasukL}</td>
+                        <td className="border border-slate-900 py-1 px-1 text-emerald-900 align-middle">{row.mMasukP}</td>
+                        <td className="border border-slate-900 py-1 px-1 font-extrabold bg-emerald-50 text-emerald-950 align-middle">
                           {row.mMasukJml > 0 ? `+${row.mMasukJml}` : 0}
                         </td>
 
-                        <td className="border border-slate-900 py-1.5 px-2 text-rose-900">{row.mKeluarL}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 text-rose-900">{row.mKeluarP}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 font-extrabold bg-rose-50 text-rose-950">
+                        <td className="border border-slate-900 py-1 px-1 text-rose-900 align-middle">{row.mKeluarL}</td>
+                        <td className="border border-slate-900 py-1 px-1 text-rose-900 align-middle">{row.mKeluarP}</td>
+                        <td className="border border-slate-900 py-1 px-1 font-extrabold bg-rose-50 text-rose-950 align-middle">
                           {row.mKeluarJml > 0 ? `-${row.mKeluarJml}` : 0}
                         </td>
 
-                        <td className="border border-slate-900 py-1.5 px-2 text-blue-900">{row.akhirL}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 text-blue-900">{row.akhirP}</td>
-                        <td className="border border-slate-900 py-1.5 px-2 font-extrabold bg-blue-100 text-blue-950">{row.akhirJml}</td>
+                        <td className="border border-slate-900 py-1 px-1 text-blue-900 align-middle">{row.akhirL}</td>
+                        <td className="border border-slate-900 py-1 px-1 text-blue-900 align-middle">{row.akhirP}</td>
+                        <td className="border border-slate-900 py-1 px-1 font-extrabold bg-blue-100 text-blue-950 align-middle">{row.akhirJml}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-slate-200 font-extrabold text-slate-900 border-t-2 border-slate-900">
-                      <td colSpan={2} className="border border-slate-900 px-3 py-2 text-center uppercase">TOTAL</td>
-                      <td className="border border-slate-900">{totalAwalL}</td>
-                      <td className="border border-slate-900">{totalAwalP}</td>
-                      <td className="border border-slate-900 bg-slate-300 font-black">{totalAwalL + totalAwalP}</td>
+                    <tr className="bg-slate-200 font-extrabold text-slate-900 border-t-2 border-slate-900 h-[26px]">
+                      <td colSpan={2} className="border border-slate-900 px-2.5 py-1 text-center uppercase font-black text-[9.5px] align-middle">
+                        TOTAL KESELURUHAN
+                      </td>
+                      <td className="border border-slate-900 py-1 px-1 align-middle font-extrabold">{totalAwalL}</td>
+                      <td className="border border-slate-900 py-1 px-1 align-middle font-extrabold">{totalAwalP}</td>
+                      <td className="border border-slate-900 py-1 px-1 bg-slate-300 font-black align-middle text-slate-950">{totalAwalL + totalAwalP}</td>
 
-                      <td className="border border-slate-900 text-emerald-900">{totalMasukL}</td>
-                      <td className="border border-slate-900 text-emerald-900">{totalMasukP}</td>
-                      <td className="border border-slate-900 bg-emerald-200 text-emerald-950 font-black">+{totalMasukL + totalMasukP}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-emerald-950 align-middle font-extrabold">{totalMasukL}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-emerald-950 align-middle font-extrabold">{totalMasukP}</td>
+                      <td className="border border-slate-900 py-1 px-1 bg-emerald-200 text-emerald-950 font-black align-middle">+{totalMasukL + totalMasukP}</td>
 
-                      <td className="border border-slate-900 text-rose-900">{totalKeluarL}</td>
-                      <td className="border border-slate-900 text-rose-900">{totalKeluarP}</td>
-                      <td className="border border-slate-900 bg-rose-200 text-rose-950 font-black">-{totalKeluarL + totalKeluarP}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-rose-950 align-middle font-extrabold">{totalKeluarL}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-rose-950 align-middle font-extrabold">{totalKeluarP}</td>
+                      <td className="border border-slate-900 py-1 px-1 bg-rose-200 text-rose-950 font-black align-middle">-{totalKeluarL + totalKeluarP}</td>
 
-                      <td className="border border-slate-900 text-blue-900">{totalAkhirL}</td>
-                      <td className="border border-slate-900 text-blue-900">{totalAkhirP}</td>
-                      <td className="border border-slate-900 bg-blue-300 text-blue-950 font-black">{totalAkhirL + totalAkhirP}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-blue-950 align-middle font-extrabold">{totalAkhirL}</td>
+                      <td className="border border-slate-900 py-1 px-1 text-blue-950 align-middle font-extrabold">{totalAkhirP}</td>
+                      <td className="border border-slate-900 py-1 px-1 bg-blue-300 text-blue-950 font-black align-middle">{totalAkhirL + totalAkhirP}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
               {/* Legal Signature */}
-              <div className="mt-6 flex justify-end items-start text-xs font-semibold px-6">
+              <div className="mt-5 flex justify-end items-start text-xs font-semibold px-6">
                 <div className="text-center space-y-1">
-                  <p>{school.tempat || 'Jakarta'}, {school.tanggal || '30 Oktober 2026'}</p>
+                  <p>{formatSignatureDate(school.tempat, school.tanggal)}</p>
                   <p className="font-bold">Kepala {school.name ? school.name : 'Sekolah'}</p>
-                  <div className="h-12 flex items-center justify-center">
+                  <div className="h-14 flex items-center justify-center">
                     {officials.kepsekTtdUrl && (
-                      <img src={officials.kepsekTtdUrl} alt="TTD Kepsek" className="max-h-12 object-contain" />
+                      <img src={officials.kepsekTtdUrl} alt="TTD Kepsek" className="max-h-14 object-contain" />
                     )}
                   </div>
-                  <p className="font-bold underline uppercase">
+                  <p className="font-bold underline uppercase text-xs">
                     {officials.kepsekName || '...........................................'}
                   </p>
-                  <p className="text-slate-700 font-normal">
+                  <p className="text-slate-700 font-normal text-[11px]">
                     NIP. {officials.kepsekNip || '...........................................'}
                   </p>
                 </div>
+              </div>
+
+              {/* Footer Rekap */}
+              <div className="flex justify-between items-center text-[8.5px] text-slate-500 font-medium pt-2 border-t border-slate-300 mt-4">
+                <div>Rekapitulasi Mutasi Peserta Didik | {school.name || 'SMP Negeri 18 Jakarta'} | Tahun Pelajaran {tahunAjaran}</div>
+                <div className="font-semibold text-slate-700">Halaman 1 dari 1 (F4 Landscape)</div>
               </div>
             </div>
           </div>
